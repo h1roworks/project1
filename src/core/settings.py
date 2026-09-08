@@ -99,6 +99,13 @@ class RerankSettings:
 
 
 @dataclass
+class TransformSettings:
+    refine: bool = True  # 是否启用 Transform（规则去噪）
+    refine_with_llm: bool = False  # 是否启用可选 LLM 二次加工（失败自动回退规则结果）
+    prompt_path: str = ""  # chunk_refinement prompt 路径；空 = 使用默认模板
+
+
+@dataclass
 class EvaluationSettings:
     provider: str = "composite"
     metrics: list[str] = field(default_factory=list)
@@ -122,6 +129,7 @@ class Settings:
     retrieval: RetrievalSettings = field(default_factory=RetrievalSettings)
     splitter: SplitterSettings = field(default_factory=SplitterSettings)
     rerank: RerankSettings = field(default_factory=RerankSettings)
+    transform: TransformSettings = field(default_factory=TransformSettings)
     evaluation: EvaluationSettings = field(default_factory=EvaluationSettings)
     observability: ObservabilitySettings = field(default_factory=ObservabilitySettings)
 
@@ -147,6 +155,7 @@ _SECTION_TYPES = {
     "retrieval": RetrievalSettings,
     "splitter": SplitterSettings,
     "rerank": RerankSettings,
+    "transform": TransformSettings,
     "evaluation": EvaluationSettings,
     "observability": ObservabilitySettings,
 }

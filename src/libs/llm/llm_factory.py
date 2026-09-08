@@ -9,9 +9,10 @@ import importlib
 from typing import TYPE_CHECKING, Any
 
 from libs.llm.base_llm import BaseLLM
+from libs.llm.base_vision_llm import BaseVisionLLM
 
 if TYPE_CHECKING:
-    from core.settings import LLMSettings
+    from core.settings import LLMSettings, VisionLLMSettings
 
 # 内置 provider → 实现模块路径。模块在首次使用时才 import，避免硬依赖。
 _BUILTIN_PROVIDERS: dict[str, str] = {
@@ -22,10 +23,19 @@ _BUILTIN_PROVIDERS: dict[str, str] = {
     "dashscope": "libs.llm.dashscope_llm",
 }
 
+# Vision LLM 内置 provider → 实现模块路径（openai/dashscope 同为 OpenAI 兼容协议）。
+_VISION_BUILTIN_PROVIDERS: dict[str, str] = {
+    "azure": "libs.llm.azure_vision_llm",
+    "openai": "libs.llm.openai_vision_llm",
+    "dashscope": "libs.llm.openai_vision_llm",
+}
+
+
 class LLMFactory:
     """根据 settings.llm.provider 路由到具体 LLM 实现。"""
 
     _registry: dict[str, type[BaseLLM]] = {}
+    _vision_registry: dict[str, type[BaseVisionLLM]] = {}
 
     @classmethod
     def register(cls, provider: str, impl: type[BaseLLM]) -> None:
@@ -33,11 +43,22 @@ class LLMFactory:
         cls._registry[provider] = impl
 
     @classmethod
+    def register_vision(cls, provider: str, impl: type[BaseVisionLLM]) -> None:
+        """注册 Vision LLM provider 对应的实现类。"""
+        cls._vision_registry[provider] = impl
+
+    @classmethod
     def _ensure_builtin(cls, provider: str) -> None:
         """首次使用时加载内置 provider 模块（模块导入时自行注册）。"""
         if provider in cls._registry or provider not in _BUILTIN_PROVIDERS:
             return
         importlib.import_module(_BUILTIN_PROVIDERS[provider])
+
+    @classmethod
+    def _ensure_builtin_vision(cls, provider: str) -> None:
+        if provider in cls._vision_registry or provider not in _VISION_BUILTIN_PROVIDERS:
+            return
+        importlib.import_module(_VISION_BUILTIN_PROVIDERS[provider])
 
     @classmethod
     def create(cls, settings: Any) -> BaseLLM:
@@ -64,3 +85,28 @@ class LLMFactory:
             )
         return impl(settings)
 
+    @classmethod
+    def create_vision_llm(cls, settings: Any) -> BaseVisionLLM:
+        """根据配置创建 Vision LLM 实例。
+
+        Args:
+            settings: 配置对象，至少包含 ``provider`` 字段（通常是 VisionLLMSettings）。
+
+        Returns:
+            BaseVisionLLM 实现实例。
+
+        Raises:
+            ValueError: provider 为空或未注册时抛出可读错误。
+        """
+        provider = getattr(settings, "provider", "")
+        if not provider:
+            raise ValueError("Vision LLM provider 未配置（settings.vision_llm.provider 为空）")
+
+        cls._ensure_builtin_vision(provider)
+        impl = cls._vision_registry.get(provider)
+        if impl is None:
+            raise ValueError(
+                f"未知的 Vision LLM provider: '{provider}'。"
+                f"可选: {sorted(cls._vision_registry)}"
+            )
+        return impl(settings)

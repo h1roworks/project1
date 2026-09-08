@@ -1959,22 +1959,22 @@ dashboard:
 
 | 任务编号 | 任务名称 | 状态 | 完成日期 | 备注 |
 |---------|---------|------|---------|------|
-| B1 | LLM 抽象接口与工厂 | [ ] | | |
-| B2 | Embedding 抽象接口与工厂 | [ ] | | |
-| B3 | Splitter 抽象接口与工厂 | [ ] | | |
-| B4 | VectorStore 抽象接口与工厂 | [ ] | | |
-| B5 | Reranker 抽象接口与工厂（含 None 回退） | [ ] | | |
-| B6 | Evaluator 抽象接口与工厂 | [ ] | | |
-| B7.1 | OpenAI-Compatible LLM 实现 | [ ] | | |
-| B7.2 | Ollama LLM 实现 | [ ] | | |
-| B7.3 | OpenAI & Azure Embedding 实现 | [ ] | | |
-| B7.4 | Ollama Embedding 实现 | [ ] | | |
-| B7.5 | Recursive Splitter 默认实现 | [ ] | | |
-| B7.6 | ChromaStore 默认实现 | [ ] | | |
-| B7.7 | LLM Reranker 实现 | [ ] | | |
-| B7.8 | Cross-Encoder Reranker 实现 | [ ] | | |
-| B8 | Vision LLM 抽象接口与工厂集成 | [ ] | | |
-| B9 | Azure Vision LLM 实现 | [ ] | | |
+| B1 | LLM 抽象接口与工厂 | [x] | 2026-09-08 | 组1 |
+| B2 | Embedding 抽象接口与工厂 | [x] | 2026-09-08 | 组1 |
+| B3 | Splitter 抽象接口与工厂 | [x] | 2026-09-08 | 组1 |
+| B4 | VectorStore 抽象接口与工厂 | [x] | 2026-09-08 | 组1 |
+| B5 | Reranker 抽象接口与工厂（含 None 回退） | [x] | 2026-09-08 | 组1 |
+| B6 | Evaluator 抽象接口与工厂 | [x] | 2026-09-08 | 组1 |
+| B7.1 | OpenAI-Compatible LLM 实现 | [x] | 2026-09-08 | 组2 |
+| B7.2 | Ollama LLM 实现 | [x] | 2026-09-08 | 组2 |
+| B7.3 | OpenAI & Azure Embedding 实现 | [x] | 2026-09-08 | 组3 |
+| B7.4 | Ollama Embedding 实现 | [x] | 2026-09-08 | 组3 |
+| B7.5 | Recursive Splitter 默认实现 | [x] | 2026-09-08 | 组4 |
+| B7.6 | ChromaStore 默认实现 | [x] | 2026-09-08 | 组4 |
+| B7.7 | LLM Reranker 实现 | [x] | 2026-09-08 | 组5 |
+| B7.8 | Cross-Encoder Reranker 实现 | [x] | 2026-09-08 | 组5 |
+| B8 | Vision LLM 抽象接口与工厂集成 | [x] | 2026-09-08 | 组2 |
+| B9 | Azure Vision LLM 实现 | [x] | 2026-09-08 | 组2 |
 
 #### 阶段 C：Ingestion Pipeline MVP
 

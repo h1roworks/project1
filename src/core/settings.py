@@ -30,6 +30,10 @@ class LLMSettings:
     base_url: str = ""
     temperature: float = 0.1
     max_tokens: int = 2048
+    # Azure OpenAI 专用配置（provider=azure 时使用）
+    azure_endpoint: str = ""
+    api_version: str = ""
+    deployment_name: str = ""
 
 
 @dataclass
@@ -40,6 +44,11 @@ class EmbeddingSettings:
     base_url: str = ""
     dimensions: int = 1024
     batch_size: int = 32
+    max_input_chars: int = 0  # 单条输入超长截断上限（字符），0 = 不截断
+    # Azure OpenAI 专用配置（provider=azure 时使用）
+    azure_endpoint: str = ""
+    api_version: str = ""
+    deployment_name: str = ""
 
 
 @dataclass

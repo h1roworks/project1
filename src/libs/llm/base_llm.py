@@ -25,6 +25,18 @@ class ChatResponse:
     raw: Any = None
 
 
+def usage_to_dict(usage: Any) -> dict[str, Any] | None:
+    """把 SDK 的 usage 对象转成普通 dict（ChatResponse.usage 的标准形状）。
+
+    兼容 openai/ollama 等不同 SDK 的返回对象；无 usage 时返回 None。
+    """
+    if usage is None:
+        return None
+    if hasattr(usage, "model_dump"):
+        return usage.model_dump()
+    return dict(usage)
+
+
 class BaseLLM(ABC):
     """所有 LLM provider 的抽象基类。
 

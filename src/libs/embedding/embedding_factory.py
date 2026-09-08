@@ -14,6 +14,7 @@ _BUILTIN_PROVIDERS: dict[str, str] = {
     "openai": "libs.embedding.openai_embedding",
     "azure": "libs.embedding.azure_embedding",
     "ollama": "libs.embedding.ollama_embedding",
+    "dashscope": "libs.embedding.dashscope_embedding",
 }
 
 

@@ -19,8 +19,8 @@ _BUILTIN_PROVIDERS: dict[str, str] = {
     "azure": "libs.llm.azure_llm",
     "deepseek": "libs.llm.deepseek_llm",
     "ollama": "libs.llm.ollama_llm",
+    "dashscope": "libs.llm.dashscope_llm",
 }
-
 
 class LLMFactory:
     """根据 settings.llm.provider 路由到具体 LLM 实现。"""
@@ -63,3 +63,4 @@ class LLMFactory:
                 f"未知的 LLM provider: '{provider}'。可选: {sorted(cls._registry)}"
             )
         return impl(settings)
+

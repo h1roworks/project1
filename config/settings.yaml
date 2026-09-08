@@ -6,6 +6,10 @@ llm:
   base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
   temperature: 0.1
   max_tokens: 2048
+  # 使用 Azure OpenAI（provider=azure）时的专用配置：
+  # azure_endpoint: "https://xxx.openai.azure.com/"
+  # api_version: "2024-06-01"
+  # deployment_name: "your-deployment"
 
 # ============ Embedding 配置 ============
 embedding:
@@ -15,6 +19,11 @@ embedding:
   base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
   dimensions: 1024
   batch_size: 32
+  max_input_chars: 0               # 单条输入超长截断上限（字符），0 = 不截断
+  # 使用 Azure OpenAI（provider=azure）时的专用配置：
+  # azure_endpoint: "https://xxx.openai.azure.com/"
+  # api_version: "2024-06-01"
+  # deployment_name: "your-embedding-deployment"
 
 # ============ Vision LLM 配置（图片描述） ============
 vision_llm:

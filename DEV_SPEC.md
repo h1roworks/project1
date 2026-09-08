@@ -1982,7 +1982,7 @@ dashboard:
 |---------|---------|------|---------|------|
 | C1 | 定义核心数据类型/契约（Document/Chunk/ChunkRecord） | [x] | 2026-09-08 | |
 | C2 | 文件完整性检查（SHA256） | [x] | 2026-09-08 | |
-| C3 | Loader 抽象基类与 PDF Loader | [ ] | | |
+| C3 | Loader 抽象基类与 PDF Loader | [x] | 2026-09-08 | |
 | C4 | Splitter 集成（调用 Libs） | [ ] | | |
 | C5 | Transform 基类 + ChunkRefiner | [ ] | | |
 | C6 | MetadataEnricher | [ ] | | |

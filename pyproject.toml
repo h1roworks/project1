@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 dependencies = [
     "pyyaml>=6.0",
     "pydantic>=2.0",
-    "markitdown>=0.1",
+    "markitdown[pdf]>=0.1",
     "langchain-text-splitters>=0.2",
     "chromadb>=0.5",
     "openai>=1.30",
@@ -28,6 +28,7 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "pytest-cov>=5.0",
+    "reportlab>=4.0",  # 测试用：生成 PDF 样例
 ]
 
 [tool.setuptools]

@@ -31,6 +31,12 @@ vision_llm:
   model: "qwen-vl-plus"
   api_key: "${DASHSCOPE_API_KEY}"
   base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  max_tokens: 1024
+  max_image_size: 2048             # 图片最长边超过此值时自动等比压缩（px）
+  # 使用 Azure OpenAI（provider=azure）时的专用配置：
+  # azure_endpoint: "https://xxx.openai.azure.com/"
+  # api_version: "2024-06-01"
+  # deployment_name: "your-deployment"
 
 # ============ 向量存储配置 ============
 vector_store:

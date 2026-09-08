@@ -57,6 +57,12 @@ class VisionLLMSettings:
     model: str = ""
     api_key: str = ""
     base_url: str = ""
+    max_tokens: int = 1024
+    max_image_size: int = 2048  # 图片最长边超过此值时自动等比压缩（px）
+    # Azure OpenAI 专用配置（provider=azure 时使用）
+    azure_endpoint: str = ""
+    api_version: str = ""
+    deployment_name: str = ""
 
 
 @dataclass

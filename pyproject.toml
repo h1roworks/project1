@@ -16,6 +16,7 @@ dependencies = [
     "chromadb>=0.5",
     "openai>=1.30",
     "ollama>=0.3",
+    "pillow>=10.0",
     "mcp>=1.0",
     "streamlit>=1.36",
     "ragas>=0.2",

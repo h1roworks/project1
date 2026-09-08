@@ -38,6 +38,14 @@ retrieval:
   # 元数据硬过滤字段（为空则不做 pre-filter）
   hard_filters: []
 
+# ============ 切分配置 ============
+splitter:
+  strategy: "recursive"            # recursive | semantic | fixed
+  chunk_size: 1000
+  chunk_overlap: 200
+  # 自定义分隔符（默认按 Markdown 结构递归切分；留空则用内置分隔符）
+  separators: []
+
 # ============ 重排配置 ============
 rerank:
   provider: "none"                 # none | cross_encoder | llm

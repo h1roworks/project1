@@ -67,6 +67,14 @@ class RetrievalSettings:
 
 
 @dataclass
+class SplitterSettings:
+    strategy: str = "recursive"
+    chunk_size: int = 1000
+    chunk_overlap: int = 200
+    separators: list[str] = field(default_factory=list)
+
+
+@dataclass
 class RerankSettings:
     provider: str = "none"
     enabled: bool = False
@@ -97,6 +105,7 @@ class Settings:
     vision_llm: VisionLLMSettings = field(default_factory=VisionLLMSettings)
     vector_store: VectorStoreSettings = field(default_factory=VectorStoreSettings)
     retrieval: RetrievalSettings = field(default_factory=RetrievalSettings)
+    splitter: SplitterSettings = field(default_factory=SplitterSettings)
     rerank: RerankSettings = field(default_factory=RerankSettings)
     evaluation: EvaluationSettings = field(default_factory=EvaluationSettings)
     observability: ObservabilitySettings = field(default_factory=ObservabilitySettings)
@@ -121,6 +130,7 @@ _SECTION_TYPES = {
     "vision_llm": VisionLLMSettings,
     "vector_store": VectorStoreSettings,
     "retrieval": RetrievalSettings,
+    "splitter": SplitterSettings,
     "rerank": RerankSettings,
     "evaluation": EvaluationSettings,
     "observability": ObservabilitySettings,

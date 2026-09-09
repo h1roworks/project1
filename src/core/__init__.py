@@ -6,6 +6,7 @@ from core.types import (
     ChunkRecord,
     Document,
     ImageRef,
+    ProcessedQuery,
     extract_image_ids,
     make_image_placeholder,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "ChunkRecord",
     "Document",
     "ImageRef",
+    "ProcessedQuery",
     "extract_image_ids",
     "make_image_placeholder",
 ]

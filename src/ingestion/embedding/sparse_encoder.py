@@ -17,23 +17,9 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
-_TOKEN_RE = re.compile(r"[a-z0-9]+|[一-鿿]")
-
-# 常见英文停用词：无实际检索价值的虚词，过滤后可聚焦关键词匹配。
-_DEFAULT_STOPWORDS = frozenset(
-    {
-        "a", "an", "and", "are", "as", "at", "be", "been", "being", "but",
-        "by", "can", "could", "did", "do", "does", "for", "from", "had",
-        "has", "have", "he", "her", "his", "how", "i", "if", "in", "into",
-        "is", "it", "its", "may", "might", "of", "on", "or", "our", "shall",
-        "she", "should", "so", "that", "the", "their", "them", "then",
-        "there", "these", "they", "this", "to", "was", "we", "were", "what",
-        "when", "where", "which", "who", "will", "with", "would", "you",
-    }
-)
+from core.tokenizer import DEFAULT_STOPWORDS, tokenize_text
 
 
 class SparseEncoder:
@@ -49,12 +35,12 @@ class SparseEncoder:
                 传空集合 ``set()`` 则不过滤任何词。
         """
         self.stopwords = (
-            set(stopwords) if stopwords is not None else set(_DEFAULT_STOPWORDS)
+            set(stopwords) if stopwords is not None else set(DEFAULT_STOPWORDS)
         )
 
     def tokenize(self, text: str) -> list[str]:
-        """把文本拆成词项序列：小写 → 提取英文词/数字 + 单个汉字 → 去停用词。"""
-        return [t for t in _TOKEN_RE.findall(text.lower()) if t not in self.stopwords]
+        """把文本拆成词项序列（复用 Core 层共享分词，见 ``core.tokenizer``）。"""
+        return tokenize_text(text, self.stopwords)
 
     def term_freqs(self, text: str) -> dict[str, int]:
         """统计单个文本的词频：``{term: 出现次数}``。空文本返回 ``{}``。"""

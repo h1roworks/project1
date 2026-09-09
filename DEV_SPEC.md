@@ -2000,7 +2000,7 @@ dashboard:
 
 | 任务编号 | 任务名称 | 状态 | 完成日期 | 备注 |
 |---------|---------|------|---------|------|
-| D1 | QueryProcessor（关键词提取 + filters） | [ ] | | |
+| D1 | QueryProcessor（关键词提取 + filters） | [x] | 2026-09-09 | 共享分词下沉 core/tokenizer.py（与索引端一致）；ProcessedQuery 契约；同义词扩展并入稀疏（原始1.0/扩展0.8）；内联 key:value 解析 + 显式 filters 优先 |
 | D2 | DenseRetriever（调用 VectorStore.query） | [ ] | | |
 | D3 | SparseRetriever（BM25 查询） | [ ] | | |
 | D4 | RRF Fusion | [ ] | | |

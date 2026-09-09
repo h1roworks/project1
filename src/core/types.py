@@ -4,6 +4,7 @@
 - ``Document``：Loader 产出的统一文档对象（text + metadata）
 - ``Chunk``：切分后的语义单元，携带稳定的定位与溯源信息
 - ``ChunkRecord``：存储/检索载体（Chunk + 双路向量），字段按 C8~C12 演进
+- ``ProcessedQuery``：查询预处理产物（关键词 + 稀疏词项 + filters），D1 引入
 - ``ImageRef``：``metadata.images`` 条目的结构化描述，支持多模态索引
 
 **元数据约定**：
@@ -173,4 +174,44 @@ class ChunkRecord:
             metadata=data.get("metadata", {}),
             dense_vector=data.get("dense_vector"),
             sparse_vector=data.get("sparse_vector"),
+        )
+
+
+@dataclass
+class ProcessedQuery:
+    """查询预处理产物（D1：QueryProcessor 输出）。
+
+    ``keywords`` 为原始关键词（去停用词、去重、保序）；``sparse_terms`` 为
+    稀疏检索词项及其权重（原始关键词 1.0，扩展同义词 0.8）；``dense_query``
+    为稠密检索输入文本（默认取剥离过滤约束后的查询）；``filters`` 为解析出的
+    结构化元数据过滤条件；``method`` 记录处理方式（当前 ``"rule"``，预留
+    LLM 增强）。
+    """
+
+    original_query: str
+    keywords: list[str] = field(default_factory=list)
+    sparse_terms: dict[str, float] = field(default_factory=dict)
+    dense_query: str = ""
+    filters: dict[str, Any] = field(default_factory=dict)
+    method: str = "rule"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "original_query": self.original_query,
+            "keywords": self.keywords,
+            "sparse_terms": self.sparse_terms,
+            "dense_query": self.dense_query,
+            "filters": self.filters,
+            "method": self.method,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ProcessedQuery":
+        return cls(
+            original_query=data["original_query"],
+            keywords=data.get("keywords", []),
+            sparse_terms=data.get("sparse_terms", {}),
+            dense_query=data.get("dense_query", ""),
+            filters=data.get("filters", {}),
+            method=data.get("method", "rule"),
         )

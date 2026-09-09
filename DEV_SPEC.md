@@ -1987,7 +1987,7 @@ dashboard:
 | C5 | Transform 基类 + ChunkRefiner | [x] | 2026-09-08 | |
 | C6 | MetadataEnricher | [x] | 2026-09-09 | |
 | C7 | ImageCaptioner | [x] | 2026-09-09 | |
-| C8 | DenseEncoder | [ ] | | |
+| C8 | DenseEncoder | [x] | 2026-09-09 | 内容哈希缓存（增量编码）+ batch_size 分批 |
 | C9 | SparseEncoder | [ ] | | |
 | C10 | BatchProcessor | [ ] | | |
 | C11 | BM25Indexer（倒排索引+IDF计算） | [ ] | | |

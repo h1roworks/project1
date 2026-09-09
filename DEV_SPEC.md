@@ -1991,7 +1991,7 @@ dashboard:
 | C9 | SparseEncoder | [x] | 2026-09-09 | 分词+词频输出 {term: tf}，空文本返回空 dict |
 | C10 | BatchProcessor | [x] | 2026-09-09 | Dense+Sparse 双路编码批处理编排，输出对齐 ChunkRecord 列表 |
 | C11 | BM25Indexer（倒排索引+IDF计算） | [x] | 2026-09-09 | 倒排索引{term:{chunk_id:tf}}+文档长度表；平滑版IDF；Upsert幂等；remove_document；pickle持久化(data/db/bm25) |
-| C12 | VectorUpserter（幂等upsert） | [ ] | | |
+| C12 | VectorUpserter（幂等upsert） | [x] | 2026-09-09 | 双路写入 Chroma+BM25；metadata 规约过 Chroma 校验；幂等；配置 index_path 自动持久化 |
 | C13 | ImageStorage（图片存储+SQLite索引） | [ ] | | |
 | C14 | Pipeline 编排（MVP 串起来） | [ ] | | |
 | C15 | 脚本入口 ingest.py | [ ] | | |

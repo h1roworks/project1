@@ -103,6 +103,7 @@ class TransformSettings:
     refine: bool = True  # 是否启用 Transform（规则去噪）
     refine_with_llm: bool = False  # 是否启用可选 LLM 二次加工（失败自动回退规则结果）
     enrich_with_llm: bool = False  # 是否启用 MetadataEnricher 的 LLM 增强（失败自动回退规则结果）
+    caption_with_vision: bool = False  # 是否启用 ImageCaptioner 的 Vision LLM 标注（失败自动回退，不阻塞）
     prompt_path: str = ""  # chunk_refinement prompt 路径；空 = 使用默认模板
 
 

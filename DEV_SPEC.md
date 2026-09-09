@@ -1993,7 +1993,7 @@ dashboard:
 | C11 | BM25Indexer（倒排索引+IDF计算） | [x] | 2026-09-09 | 倒排索引{term:{chunk_id:tf}}+文档长度表；平滑版IDF；Upsert幂等；remove_document；pickle持久化(data/db/bm25) |
 | C12 | VectorUpserter（幂等upsert） | [x] | 2026-09-09 | 双路写入 Chroma+BM25；metadata 规约过 Chroma 校验；幂等；配置 index_path 自动持久化 |
 | C13 | ImageStorage（图片存储+SQLite索引） | [x] | 2026-09-09 | 图片落盘 data/images/{collection}/ + SQLite 索引 data/db/image_index.db；WAL；按 collection/doc_hash 批量查询与协调删除（delete_images/list_images） |
-| C14 | Pipeline 编排（MVP 串起来） | [ ] | | |
+| C14 | Pipeline 编排（MVP 串起来） | [x] | 2026-09-09 | IngestionPipeline 串行编排（FileIntegrity→Loader→Splitter→Transform→Embed→Upsert）；on_progress 回调；IngestionResult；增量跳过+失败标记 |
 | C15 | 脚本入口 ingest.py | [ ] | | |
 
 #### 阶段 D：Retrieval MVP

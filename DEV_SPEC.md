@@ -1990,7 +1990,7 @@ dashboard:
 | C8 | DenseEncoder | [x] | 2026-09-09 | 内容哈希缓存（增量编码）+ batch_size 分批 |
 | C9 | SparseEncoder | [x] | 2026-09-09 | 分词+词频输出 {term: tf}，空文本返回空 dict |
 | C10 | BatchProcessor | [x] | 2026-09-09 | Dense+Sparse 双路编码批处理编排，输出对齐 ChunkRecord 列表 |
-| C11 | BM25Indexer（倒排索引+IDF计算） | [ ] | | |
+| C11 | BM25Indexer（倒排索引+IDF计算） | [x] | 2026-09-09 | 倒排索引{term:{chunk_id:tf}}+文档长度表；平滑版IDF；Upsert幂等；remove_document；pickle持久化(data/db/bm25) |
 | C12 | VectorUpserter（幂等upsert） | [ ] | | |
 | C13 | ImageStorage（图片存储+SQLite索引） | [ ] | | |
 | C14 | Pipeline 编排（MVP 串起来） | [ ] | | |

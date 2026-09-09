@@ -1994,7 +1994,7 @@ dashboard:
 | C12 | VectorUpserter（幂等upsert） | [x] | 2026-09-09 | 双路写入 Chroma+BM25；metadata 规约过 Chroma 校验；幂等；配置 index_path 自动持久化 |
 | C13 | ImageStorage（图片存储+SQLite索引） | [x] | 2026-09-09 | 图片落盘 data/images/{collection}/ + SQLite 索引 data/db/image_index.db；WAL；按 collection/doc_hash 批量查询与协调删除（delete_images/list_images） |
 | C14 | Pipeline 编排（MVP 串起来） | [x] | 2026-09-09 | IngestionPipeline 串行编排（FileIntegrity→Loader→Splitter→Transform→Embed→Upsert）；on_progress 回调；IngestionResult；增量跳过+失败标记 |
-| C15 | 脚本入口 ingest.py | [ ] | | |
+| C15 | 脚本入口 ingest.py | [x] | 2026-09-09 | CLI：--path(文件/目录)/--collection/--force/--config；on_progress 走 stderr；UTF-8 输出；exit code 汇总 |
 
 #### 阶段 D：Retrieval MVP
 

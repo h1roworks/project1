@@ -132,6 +132,78 @@ class BM25Indexer:
         n = self.total_docs
         return math.log(1 + (n - df + 0.5) / (df + 0.5))
 
+    def query(
+        self,
+        keywords: list[str] | dict[str, float],
+        top_k: int = 10,
+        trace: Any = None,
+    ) -> list[dict[str, float | str]]:
+        """使用 BM25 对倒排索引中的 chunk 进行关键词召回。
+
+        ``keywords`` 可以是普通关键词列表，也可以是 ``{词: 权重}`` 映射。
+        后者供 QueryProcessor 的同义词扩展使用：原始词可保持更高权重，
+        扩展词只影响一次稀疏检索，不会额外发起多个查询。
+
+        返回结果只包含 ``chunk_id`` 和 ``score``。正文与元数据由 D3 的
+        SparseRetriever 通过 VectorStore.get_by_ids() 补齐。
+        """
+        if top_k <= 0:
+            raise ValueError("top_k 必须大于 0")
+        if not self.documents:
+            return []
+
+        term_weights = self._normalize_query_terms(keywords)
+        if not term_weights:
+            return []
+
+        avgdl = self.avgdl
+        if avgdl <= 0:
+            return []
+
+        scores: dict[str, float] = {}
+        for term, query_weight in term_weights.items():
+            idf = self.idf(term)
+            if idf <= 0:
+                continue
+            for chunk_id, term_frequency in self.postings.get(term, {}).items():
+                doc_len = self.documents[chunk_id]["doc_len"]
+                denominator = term_frequency + self.k1 * (
+                    1 - self.b + self.b * doc_len / avgdl
+                )
+                scores[chunk_id] = scores.get(chunk_id, 0.0) + query_weight * idf * (
+                    term_frequency * (self.k1 + 1) / denominator
+                )
+
+        ranked = sorted(scores.items(), key=lambda item: (-item[1], item[0]))
+        return [
+            {"chunk_id": chunk_id, "score": score}
+            for chunk_id, score in ranked[:top_k]
+        ]
+
+    @staticmethod
+    def _normalize_query_terms(
+        keywords: list[str] | dict[str, float],
+    ) -> dict[str, float]:
+        """去除空词、合并重复词，并保留最高查询权重。"""
+        if isinstance(keywords, dict):
+            normalized: dict[str, float] = {}
+            for term, weight in keywords.items():
+                if not isinstance(term, str) or not term:
+                    continue
+                try:
+                    numeric_weight = float(weight)
+                except (TypeError, ValueError):
+                    continue
+                if numeric_weight > 0:
+                    normalized[term] = numeric_weight
+            return normalized
+
+        return {
+            term: 1.0
+            for term in keywords
+            if isinstance(term, str) and term
+        }
+
     def stats(self) -> dict[str, int]:
         """索引规模统计：文档数、词项数、倒排条目总数。"""
         return {

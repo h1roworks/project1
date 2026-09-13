@@ -49,6 +49,13 @@ class InMemoryStore(BaseVectorStore):
             for s, rec in scored[:top_k]
         ]
 
+    def get_by_ids(self, ids, trace=None) -> list[VectorMatch]:
+        return [
+            VectorMatch(id=rec.id, score=0.0, text=rec.text, metadata=rec.metadata)
+            for chunk_id in ids
+            if (rec := self._records.get(chunk_id)) is not None
+        ]
+
 
 def make_record(i: int) -> VectorRecord:
     return VectorRecord(
@@ -105,6 +112,12 @@ def test_query_ranks_by_similarity(store: InMemoryStore) -> None:
 def test_query_applies_filters(store: InMemoryStore) -> None:
     results = store.query([1.0, 1.0, 0.0], top_k=10, filters={"page": 1})
     assert [r.id for r in results] == ["chunk-1"]
+
+
+def test_get_by_ids_preserves_requested_order_and_skips_missing(store: InMemoryStore) -> None:
+    results = store.get_by_ids(["chunk-3", "missing", "chunk-1"])
+    assert [result.id for result in results] == ["chunk-3", "chunk-1"]
+    assert results[0].text == "text-3"
 
 
 # ---------- 契约：工厂路由 ----------

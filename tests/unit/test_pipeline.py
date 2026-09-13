@@ -95,6 +95,18 @@ class FakeVectorStore(BaseVectorStore):
             )
         return results[:top_k]
 
+    def get_by_ids(self, ids, trace=None) -> list[VectorMatch]:
+        return [
+            VectorMatch(
+                id=record.id,
+                score=0.0,
+                text=record.text,
+                metadata=record.metadata,
+            )
+            for chunk_id in ids
+            if (record := self._records.get(chunk_id)) is not None
+        ]
+
 
 # ---------- 测试工具 ----------
 

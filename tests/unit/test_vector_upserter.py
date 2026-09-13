@@ -41,6 +41,13 @@ class FakeVectorStore(BaseVectorStore):
     def query(self, vector, top_k=10, filters=None, trace=None) -> list[VectorMatch]:
         return []
 
+    def get_by_ids(self, ids, trace=None) -> list[VectorMatch]:
+        return [
+            VectorMatch(id=record.id, score=0.0, text=record.text, metadata=record.metadata)
+            for chunk_id in ids
+            if (record := self.records.get(chunk_id)) is not None
+        ]
+
 
 def make_record(
     chunk_id: str,

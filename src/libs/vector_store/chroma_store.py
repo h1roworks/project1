@@ -70,5 +70,36 @@ class ChromaStore(BaseVectorStore):
             )
         return matches
 
+    def get_by_ids(
+        self,
+        ids: list[str],
+        trace: Any = None,
+    ) -> list[VectorMatch]:
+        """从 ChromaDB 批量取回已存储的正文和元数据。
+
+        返回顺序与调用方传入的 ``ids`` 一致，方便 SparseRetriever 保持
+        BM25 的原始排名；索引中不存在的 ID 会被忽略。
+        """
+        if not ids:
+            return []
+
+        result = self._collection.get(
+            ids=ids,
+            include=["documents", "metadatas"],
+        )
+        found_ids = result.get("ids") or []
+        documents = result.get("documents") or []
+        metadatas = result.get("metadatas") or []
+        by_id = {
+            chunk_id: VectorMatch(
+                id=chunk_id,
+                score=0.0,
+                text=documents[index] or "",
+                metadata=metadatas[index] or {},
+            )
+            for index, chunk_id in enumerate(found_ids)
+        }
+        return [by_id[chunk_id] for chunk_id in ids if chunk_id in by_id]
+
 
 VectorStoreFactory.register("chroma", ChromaStore)

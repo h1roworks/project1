@@ -98,6 +98,16 @@ def test_query_returns_vector_match_shape(store: ChromaStore) -> None:
         assert isinstance(m.metadata, dict)
 
 
+def test_get_by_ids_returns_text_metadata_in_requested_order(store: ChromaStore) -> None:
+    _upsert_five(store)
+
+    results = store.get_by_ids(["chunk-3", "missing", "chunk-1"])
+
+    assert [result.id for result in results] == ["chunk-3", "chunk-1"]
+    assert results[0].text == "text-3"
+    assert results[1].metadata["page"] == 1
+
+
 # ---------- 工厂路由 ----------
 
 def test_factory_creates_chroma(tmp_path) -> None:

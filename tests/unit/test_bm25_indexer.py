@@ -148,6 +148,47 @@ def test_df_counts_documents_per_term() -> None:
     assert indexer.df("c") == 0
 
 
+# ---------- D3 查询 / BM25 排名 ----------
+
+def test_query_returns_ranked_chunk_ids_and_scores() -> None:
+    indexer = BM25Indexer()
+    indexer.add(
+        [
+            make_record("c1", sparse={"rare": 1, "common": 1}),
+            make_record("c2", sparse={"common": 1}),
+        ]
+    )
+
+    results = indexer.query(["rare", "common"], top_k=2)
+
+    assert [result["chunk_id"] for result in results] == ["c1", "c2"]
+    assert all(result["score"] > 0 for result in results)
+
+
+def test_query_honors_term_weights_for_synonym_expansion() -> None:
+    indexer = BM25Indexer()
+    indexer.add(
+        [
+            make_record("original", sparse={"rag": 1}),
+            make_record("alias", sparse={"retrieval": 1}),
+        ]
+    )
+
+    results = indexer.query({"rag": 1.0, "retrieval": 0.2})
+
+    assert [result["chunk_id"] for result in results] == ["original", "alias"]
+
+
+def test_query_empty_or_unknown_terms_returns_empty() -> None:
+    indexer = BM25Indexer()
+    indexer.add([make_record("c1", sparse={"rag": 1})])
+
+    assert indexer.query([]) == []
+    assert indexer.query(["unknown"]) == []
+    with pytest.raises(ValueError, match="top_k"):
+        indexer.query(["rag"], top_k=0)
+
+
 # ---------- Upsert 幂等 ----------
 
 

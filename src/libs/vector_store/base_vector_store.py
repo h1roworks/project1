@@ -59,3 +59,16 @@ class BaseVectorStore(ABC):
     ) -> list[VectorMatch]:
         """按向量相似度查询 Top-K 结果。"""
         raise NotImplementedError
+
+    @abstractmethod
+    def get_by_ids(
+        self,
+        ids: list[str],
+        trace: Any = None,
+    ) -> list[VectorMatch]:
+        """按 chunk ID 批量取回正文和元数据。
+
+        稀疏检索的 BM25 索引只保存 ``chunk_id`` 和评分；该方法用于把命中
+        ID 补全为可直接展示、可生成引用的文本结果。
+        """
+        raise NotImplementedError

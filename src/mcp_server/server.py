@@ -18,6 +18,10 @@ from mcp_server.tools.query_knowledge_hub import (
     QUERY_KNOWLEDGE_HUB_SCHEMA,
     QueryKnowledgeHubTool,
 )
+from mcp_server.tools.list_collections import (
+    LIST_COLLECTIONS_SCHEMA,
+    ListCollectionsTool,
+)
 from observability.logger import get_logger
 
 SERVER_NAME = "smart-knowledge-hub"
@@ -27,7 +31,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 logger = get_logger(__name__)
 
 
-def create_server(query_tool: QueryKnowledgeHubTool | None = None) -> Server:
+def create_server(
+    query_tool: QueryKnowledgeHubTool | None = None,
+    collections_tool: ListCollectionsTool | None = None,
+) -> Server:
     """Create the MCP server.
 
     The query tool is created lazily: starting the server does not require an
@@ -42,12 +49,19 @@ def create_server(query_tool: QueryKnowledgeHubTool | None = None) -> Server:
     tool = query_tool or QueryKnowledgeHubTool.from_config(
         PROJECT_ROOT / "config" / "settings.yaml"
     )
-    _register_query_tool(server, tool)
+    collection_lister = collections_tool or ListCollectionsTool(
+        PROJECT_ROOT / "data" / "documents"
+    )
+    _register_tools(server, tool, collection_lister)
     return server
 
 
-def _register_query_tool(server: Server, query_tool: QueryKnowledgeHubTool) -> None:
-    """Expose the E3 query function through the official MCP SDK handlers."""
+def _register_tools(
+    server: Server,
+    query_tool: QueryKnowledgeHubTool,
+    collections_tool: ListCollectionsTool,
+) -> None:
+    """Expose the E3/E4 functions through the official MCP SDK handlers."""
 
     async def list_tools(_context: Any, _params: types.PaginatedRequestParams) -> types.ListToolsResult:
         return types.ListToolsResult(
@@ -56,27 +70,37 @@ def _register_query_tool(server: Server, query_tool: QueryKnowledgeHubTool) -> N
                     name="query_knowledge_hub",
                     description="使用混合检索与重排查询本地知识库，并返回可追溯引用。",
                     inputSchema=QUERY_KNOWLEDGE_HUB_SCHEMA,
-                )
+                ),
+                types.Tool(
+                    name="list_collections",
+                    description="列出 data/documents/ 下可用的知识库集合及文档数量。",
+                    inputSchema=LIST_COLLECTIONS_SCHEMA,
+                ),
             ]
         )
 
     async def call_tool(_context: Any, params: types.CallToolRequestParams) -> types.CallToolResult:
-        if params.name != "query_knowledge_hub":
+        tools = {
+            "query_knowledge_hub": query_tool,
+            "list_collections": collections_tool,
+        }
+        tool = tools.get(params.name)
+        if tool is None:
             return types.CallToolResult(
                 content=[types.TextContent(text=f"Unknown tool: {params.name}")],
                 isError=True,
             )
         try:
-            response = query_tool(**(params.arguments or {}))
+            response = tool(**(params.arguments or {}))
         except (TypeError, ValueError) as exc:
             return types.CallToolResult(
                 content=[types.TextContent(text=f"Invalid tool arguments: {exc}")],
                 isError=True,
             )
         except Exception:
-            logger.exception("query_knowledge_hub failed")
+            logger.exception("MCP tool failed: %s", params.name)
             return types.CallToolResult(
-                content=[types.TextContent(text="Knowledge base query failed.")],
+                content=[types.TextContent(text="MCP tool execution failed.")],
                 isError=True,
             )
 

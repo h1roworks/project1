@@ -64,7 +64,10 @@ def test_server_initializes_and_keeps_stdout_protocol_only() -> None:
 
         tools_response = json.loads(process.stdout.readline())
         assert tools_response["id"] == 2
-        assert tools_response["result"]["tools"][0]["name"] == "query_knowledge_hub"
+        assert {tool["name"] for tool in tools_response["result"]["tools"]} == {
+            "query_knowledge_hub",
+            "list_collections",
+        }
     finally:
         process.terminate()
         _, stderr = process.communicate(timeout=5)
@@ -82,16 +85,26 @@ def test_server_lists_and_calls_the_query_tool() -> None:
                 "structuredContent": {"answer": query, "citations": []},
             }
 
+    class FakeCollectionsTool:
+        def __call__(self):
+            return {
+                "content": [{"type": "text", "text": "Collections: course-notes"}],
+                "structuredContent": {"collections": [{"name": "course-notes"}]},
+            }
+
     async def exercise_handlers() -> None:
-        server = create_server(query_tool=FakeQueryTool())
+        server = create_server(
+            query_tool=FakeQueryTool(), collections_tool=FakeCollectionsTool()
+        )
         list_handler = server.get_request_handler("tools/list")
         call_handler = server.get_request_handler("tools/call")
         assert list_handler is not None
         assert call_handler is not None
 
         listed = await list_handler.handler(None, types.PaginatedRequestParams())
-        assert listed.tools[0].name == "query_knowledge_hub"
-        assert "query" in listed.tools[0].input_schema["properties"]
+        schemas = {tool.name: tool.input_schema for tool in listed.tools}
+        assert "query" in schemas["query_knowledge_hub"]["properties"]
+        assert schemas["list_collections"]["properties"] == {}
 
         called = await call_handler.handler(
             None,
@@ -101,6 +114,11 @@ def test_server_lists_and_calls_the_query_tool() -> None:
         )
         assert called.content[0].text == "Answer for: What is RAG?"
         assert called.structured_content == {"answer": "What is RAG?", "citations": []}
+
+        collections_called = await call_handler.handler(
+            None, types.CallToolRequestParams(name="list_collections", arguments={})
+        )
+        assert collections_called.content[0].text == "Collections: course-notes"
 
     import asyncio
 

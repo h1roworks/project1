@@ -2012,9 +2012,9 @@ dashboard:
 
 | 任务编号 | 任务名称 | 状态 | 完成日期 | 备注 |
 |---------|---------|------|---------|------|
-| E1 | MCP Server 入口与 Stdio 约束 | [ ] | | |
-| E2 | Protocol Handler 协议解析与能力协商 | [ ] | | |
-| E3 | query_knowledge_hub Tool | [ ] | | |
+| E1 | MCP Server 入口与 Stdio 约束 | [x] | 2026-09-13 | stdio Server 启动入口；stdout 仅保留 MCP 消息，日志输出 stderr；子进程 initialize 验证通过 |
+| E2 | Protocol Handler 协议解析与能力协商 | [x] | 2026-09-13 | JSON-RPC initialize/tools/list/tools/call 路由、工具注册与标准错误码映射；单元测试通过 |
+| E3 | query_knowledge_hub Tool | [x] | 2026-09-13 | HybridSearch + Reranker MCP Tool；返回 Markdown 与 structured citations；无结果友好提示 |
 | E4 | list_collections Tool | [ ] | | |
 | E5 | get_document_summary Tool | [ ] | | |
 | E6 | 多模态返回组装（Text + Image） | [ ] | | |

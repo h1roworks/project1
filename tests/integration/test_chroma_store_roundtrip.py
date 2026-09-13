@@ -108,6 +108,17 @@ def test_get_by_ids_returns_text_metadata_in_requested_order(store: ChromaStore)
     assert results[1].metadata["page"] == 1
 
 
+def test_find_by_metadata_returns_all_chunks_for_a_document(store: ChromaStore) -> None:
+    _upsert_five(store)
+
+    results = store.find_by_metadata("doc_id", "doc-a")
+
+    assert {result.id for result in results} == {
+        "chunk-0", "chunk-1", "chunk-2", "chunk-3", "chunk-4"
+    }
+    assert store.find_by_metadata("doc_id", "missing") == []
+
+
 # ---------- 工厂路由 ----------
 
 def test_factory_creates_chroma(tmp_path) -> None:

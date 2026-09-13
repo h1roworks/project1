@@ -2016,7 +2016,7 @@ dashboard:
 | E2 | Protocol Handler 协议解析与能力协商 | [x] | 2026-09-13 | JSON-RPC initialize/tools/list/tools/call 路由、工具注册与标准错误码映射；单元测试通过 |
 | E3 | query_knowledge_hub Tool | [x] | 2026-09-13 | HybridSearch + Reranker MCP Tool；返回 Markdown 与 structured citations；无结果友好提示 |
 | E4 | list_collections Tool | [x] | 2026-09-13 | 扫描 data/documents/ 的集合目录，返回文档数量与大小统计；已注册为 MCP Tool |
-| E5 | get_document_summary Tool | [ ] | | |
+| E5 | get_document_summary Tool | [x] | 2026-09-13 | 按 doc_id 从向量库元数据读取标题、摘要、标签和来源；未命中返回 MCP tool error |
 | E6 | 多模态返回组装（Text + Image） | [ ] | | |
 
 #### 阶段 F：Trace 基础设施与打点

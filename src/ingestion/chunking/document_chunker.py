@@ -47,6 +47,9 @@ class DocumentChunker:
             start, end = _find_text_span(document.text, text, search_from)
             search_from = end
             metadata = dict(document.metadata)
+            # Document-level MCP tools need a stable way to group all stored
+            # chunks back into their source document after ingestion.
+            metadata["doc_id"] = document.id
             metadata["chunk_index"] = index
             metadata["image_refs"] = extract_image_ids(text)
             chunks.append(

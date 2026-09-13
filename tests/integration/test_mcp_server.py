@@ -67,6 +67,7 @@ def test_server_initializes_and_keeps_stdout_protocol_only() -> None:
         assert {tool["name"] for tool in tools_response["result"]["tools"]} == {
             "query_knowledge_hub",
             "list_collections",
+            "get_document_summary",
         }
     finally:
         process.terminate()
@@ -92,9 +93,18 @@ def test_server_lists_and_calls_the_query_tool() -> None:
                 "structuredContent": {"collections": [{"name": "course-notes"}]},
             }
 
+    class FakeDocumentSummaryTool:
+        def __call__(self, doc_id: str):
+            return {
+                "content": [{"type": "text", "text": f"Summary: {doc_id}"}],
+                "structuredContent": {"document": {"doc_id": doc_id}},
+            }
+
     async def exercise_handlers() -> None:
         server = create_server(
-            query_tool=FakeQueryTool(), collections_tool=FakeCollectionsTool()
+            query_tool=FakeQueryTool(),
+            collections_tool=FakeCollectionsTool(),
+            document_summary_tool=FakeDocumentSummaryTool(),
         )
         list_handler = server.get_request_handler("tools/list")
         call_handler = server.get_request_handler("tools/call")
@@ -105,6 +115,7 @@ def test_server_lists_and_calls_the_query_tool() -> None:
         schemas = {tool.name: tool.input_schema for tool in listed.tools}
         assert "query" in schemas["query_knowledge_hub"]["properties"]
         assert schemas["list_collections"]["properties"] == {}
+        assert "doc_id" in schemas["get_document_summary"]["properties"]
 
         called = await call_handler.handler(
             None,
@@ -119,6 +130,14 @@ def test_server_lists_and_calls_the_query_tool() -> None:
             None, types.CallToolRequestParams(name="list_collections", arguments={})
         )
         assert collections_called.content[0].text == "Collections: course-notes"
+
+        summary_called = await call_handler.handler(
+            None,
+            types.CallToolRequestParams(
+                name="get_document_summary", arguments={"doc_id": "doc-123"}
+            ),
+        )
+        assert summary_called.content[0].text == "Summary: doc-123"
 
     import asyncio
 

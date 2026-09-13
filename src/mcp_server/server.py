@@ -22,6 +22,11 @@ from mcp_server.tools.list_collections import (
     LIST_COLLECTIONS_SCHEMA,
     ListCollectionsTool,
 )
+from mcp_server.tools.get_document_summary import (
+    GET_DOCUMENT_SUMMARY_SCHEMA,
+    DocumentNotFoundError,
+    DocumentSummaryTool,
+)
 from observability.logger import get_logger
 
 SERVER_NAME = "smart-knowledge-hub"
@@ -34,6 +39,7 @@ logger = get_logger(__name__)
 def create_server(
     query_tool: QueryKnowledgeHubTool | None = None,
     collections_tool: ListCollectionsTool | None = None,
+    document_summary_tool: DocumentSummaryTool | None = None,
 ) -> Server:
     """Create the MCP server.
 
@@ -52,7 +58,10 @@ def create_server(
     collection_lister = collections_tool or ListCollectionsTool(
         PROJECT_ROOT / "data" / "documents"
     )
-    _register_tools(server, tool, collection_lister)
+    summary_tool = document_summary_tool or DocumentSummaryTool.from_config(
+        PROJECT_ROOT / "config" / "settings.yaml"
+    )
+    _register_tools(server, tool, collection_lister, summary_tool)
     return server
 
 
@@ -60,8 +69,9 @@ def _register_tools(
     server: Server,
     query_tool: QueryKnowledgeHubTool,
     collections_tool: ListCollectionsTool,
+    document_summary_tool: DocumentSummaryTool,
 ) -> None:
-    """Expose the E3/E4 functions through the official MCP SDK handlers."""
+    """Expose the E3--E5 functions through the official MCP SDK handlers."""
 
     async def list_tools(_context: Any, _params: types.PaginatedRequestParams) -> types.ListToolsResult:
         return types.ListToolsResult(
@@ -76,6 +86,11 @@ def _register_tools(
                     description="列出 data/documents/ 下可用的知识库集合及文档数量。",
                     inputSchema=LIST_COLLECTIONS_SCHEMA,
                 ),
+                types.Tool(
+                    name="get_document_summary",
+                    description="按文档 ID 返回摄取时保存的标题、摘要、标签和来源。",
+                    inputSchema=GET_DOCUMENT_SUMMARY_SCHEMA,
+                ),
             ]
         )
 
@@ -83,6 +98,7 @@ def _register_tools(
         tools = {
             "query_knowledge_hub": query_tool,
             "list_collections": collections_tool,
+            "get_document_summary": document_summary_tool,
         }
         tool = tools.get(params.name)
         if tool is None:
@@ -92,6 +108,11 @@ def _register_tools(
             )
         try:
             response = tool(**(params.arguments or {}))
+        except DocumentNotFoundError as exc:
+            return types.CallToolResult(
+                content=[types.TextContent(text=f"Document not found: {exc}")],
+                isError=True,
+            )
         except (TypeError, ValueError) as exc:
             return types.CallToolResult(
                 content=[types.TextContent(text=f"Invalid tool arguments: {exc}")],

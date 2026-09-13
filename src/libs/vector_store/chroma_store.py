@@ -101,5 +101,30 @@ class ChromaStore(BaseVectorStore):
         }
         return [by_id[chunk_id] for chunk_id in ids if chunk_id in by_id]
 
+    def find_by_metadata(self, key: str, value: Any) -> list[VectorMatch]:
+        """Return all records whose scalar metadata ``key`` equals ``value``.
+
+        This small Chroma-specific read API supports document-level MCP tools.
+        It deliberately lives outside the minimal ``BaseVectorStore`` contract:
+        retrieval backends only need query/get-by-id, while this optional browse
+        capability is used when the selected backend provides it.
+        """
+        result = self._collection.get(
+            where={key: value},
+            include=["documents", "metadatas"],
+        )
+        ids = result.get("ids") or []
+        documents = result.get("documents") or []
+        metadatas = result.get("metadatas") or []
+        return [
+            VectorMatch(
+                id=chunk_id,
+                score=0.0,
+                text=documents[index] or "",
+                metadata=metadatas[index] or {},
+            )
+            for index, chunk_id in enumerate(ids)
+        ]
+
 
 VectorStoreFactory.register("chroma", ChromaStore)

@@ -78,6 +78,12 @@ def test_chunker_accepts_injected_splitter() -> None:
     assert len(chunks) == 4  # 标题 + 三个段落
 
 
+def test_chunks_store_parent_document_id_in_metadata() -> None:
+    chunks = DocumentChunker(splitter=ParagraphSplitter()).chunk(make_document())
+
+    assert all(chunk.metadata["doc_id"] == "doc_001" for chunk in chunks)
+
+
 # ---------- 内容与 ID ----------
 
 

@@ -95,7 +95,7 @@
 | D3 | SparseRetriever（BM25 查询） | [x] | 2026-09-13 | BM25 打分 + VectorStore.get_by_ids + 20 项单元/集成测试（待本机 Python 环境恢复后执行） |
 | D4 | RRF Fusion | [x] | 2026-09-13 | 可配置 RRF k + 稳定去重排序 + 16 项单元测试（待本机 Python 环境恢复后执行） |
 | D5 | HybridSearch 编排 | [x] | 2026-09-13 | 并行 Dense/Sparse + RRF + 元数据后置过滤 + 单路降级 + 14 项集成测试（待本机 Python 环境恢复后执行） |
-| D6 | Reranker（Core 层编排 + Fallback） | [ ] | | |
+| D6 | Reranker（Core 层编排 + Fallback） | [x] | 2026-09-13 | Top-M 精排 + 超时/异常回退 + fallback 标记 + 12 项单元测试（待本机 Python 环境恢复后执行） |
 | D7 | 脚本入口 query.py（查询可用） | [ ] | | |
 
 #### 阶段 E：MCP Server 层与 Tools

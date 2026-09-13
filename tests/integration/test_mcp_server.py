@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 from pathlib import Path
@@ -9,7 +10,11 @@ import subprocess
 import sys
 
 from mcp import types
+from core.response.multimodal_assembler import MultimodalAssembler
+from core.types import RetrievalResult
+from ingestion.storage.image_storage import ImageStorage
 from mcp_server.server import create_server
+from mcp_server.tools.query_knowledge_hub import QueryKnowledgeHubTool
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -142,3 +147,66 @@ def test_server_lists_and_calls_the_query_tool() -> None:
     import asyncio
 
     asyncio.run(exercise_handlers())
+
+
+def test_server_returns_base64_image_content_for_retrieved_image(tmp_path) -> None:
+    """A chunk image reference becomes a standard MCP ImageContent item."""
+    image_bytes = b"\x89PNG\r\n\x1a\nimage-bytes"
+    storage = ImageStorage(
+        images_dir=tmp_path / "images", db_path=tmp_path / "db" / "images.db"
+    )
+    storage.save_image("architecture", image_bytes, collection="course")
+
+    class FakeHybridSearch:
+        def search(self, _query, top_k, filters=None):
+            assert top_k == 1
+            assert filters is None
+            return [
+                RetrievalResult(
+                    chunk_id="chunk-1",
+                    score=0.9,
+                    text="系统架构图说明。",
+                    metadata={
+                        "source_path": "docs/architecture.md",
+                        "image_refs": ["architecture"],
+                    },
+                )
+            ]
+
+    class FakeReranker:
+        def rerank(self, _query, candidates):
+            return candidates
+
+    query_tool = QueryKnowledgeHubTool(
+        hybrid_search=FakeHybridSearch(),
+        reranker=FakeReranker(),
+        default_top_k=1,
+        multimodal_assembler=MultimodalAssembler(image_storage=storage),
+    )
+
+    async def call_query_tool() -> None:
+        server = create_server(
+            query_tool=query_tool,
+            collections_tool=lambda: {"content": [], "structuredContent": {}},
+            document_summary_tool=lambda _doc_id: {"content": [], "structuredContent": {}},
+        )
+        handler = server.get_request_handler("tools/call")
+        assert handler is not None
+
+        result = await handler.handler(
+            None,
+            types.CallToolRequestParams(
+                name="query_knowledge_hub", arguments={"query": "展示架构图"}
+            ),
+        )
+        assert result.content[0].type == "text"
+        assert result.content[1].type == "image"
+        assert result.content[1].data == base64.b64encode(image_bytes).decode("ascii")
+        assert result.content[1].mime_type == "image/png"
+
+    import asyncio
+
+    try:
+        asyncio.run(call_query_tool())
+    finally:
+        storage.close()

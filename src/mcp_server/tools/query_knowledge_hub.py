@@ -12,6 +12,7 @@ from core.query_engine.hybrid_search import HybridSearch
 from core.query_engine.query_processor import QueryProcessor
 from core.query_engine.reranker import Reranker
 from core.query_engine.sparse_retriever import SparseRetriever
+from core.response.multimodal_assembler import MultimodalAssembler
 from core.response.response_builder import MCPResponse, ResponseBuilder
 from core.settings import Settings, load_settings
 from ingestion.storage.bm25_indexer import BM25Indexer
@@ -40,6 +41,8 @@ QUERY_KNOWLEDGE_HUB_SCHEMA: dict[str, Any] = {
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _DEFAULT_CONFIG_PATH = _PROJECT_ROOT / "config" / "settings.yaml"
 _BM25_DIRECTORY = _PROJECT_ROOT / "data" / "db" / "bm25"
+_IMAGES_DIRECTORY = _PROJECT_ROOT / "data" / "images"
+_IMAGE_INDEX_PATH = _PROJECT_ROOT / "data" / "db" / "image_index.db"
 
 
 def build_query_engine(
@@ -72,6 +75,7 @@ class QueryKnowledgeHubTool:
         default_top_k: int = 10,
         engine_factory: Callable[[str | None], tuple[HybridSearch, Reranker]] | None = None,
         response_builder: ResponseBuilder | None = None,
+        multimodal_assembler: MultimodalAssembler | None = None,
     ) -> None:
         if (hybrid_search is None) != (reranker is None):
             raise ValueError("hybrid_search and reranker must be provided together.")
@@ -85,6 +89,9 @@ class QueryKnowledgeHubTool:
         self._engines: dict[str | None, tuple[HybridSearch, Reranker]] = {}
         self.default_top_k = default_top_k
         self.response_builder = response_builder or ResponseBuilder()
+        self.multimodal_assembler = multimodal_assembler or MultimodalAssembler(
+            storage_factory=lambda: _build_image_storage()
+        )
 
     @classmethod
     def from_config(cls, config_path: str | Path = _DEFAULT_CONFIG_PATH) -> "QueryKnowledgeHubTool":
@@ -109,7 +116,9 @@ class QueryKnowledgeHubTool:
         filters = {"collection": normalized_collection} if normalized_collection else None
         candidates = hybrid_search.search(normalized_query, top_k=limit, filters=filters)
         results = reranker.rerank(normalized_query, candidates)
-        return self.response_builder.build(results[:limit], normalized_query)
+        selected_results = results[:limit]
+        response = self.response_builder.build(selected_results, normalized_query)
+        return self.multimodal_assembler.assemble(response, selected_results)
 
     def _get_engine(self, collection: str | None) -> tuple[HybridSearch, Reranker]:
         if self._static_engine is not None:
@@ -148,3 +157,10 @@ def query_knowledge_hub(
 ) -> MCPResponse:
     """Convenience entry point for direct, one-off use outside the MCP server."""
     return QueryKnowledgeHubTool.from_config()(query, top_k, collection)
+
+
+def _build_image_storage():
+    """Open the project image index only when a query actually references images."""
+    from ingestion.storage.image_storage import ImageStorage
+
+    return ImageStorage(images_dir=_IMAGES_DIRECTORY, db_path=_IMAGE_INDEX_PATH)

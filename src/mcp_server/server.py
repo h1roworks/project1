@@ -125,14 +125,27 @@ def _register_tools(
                 isError=True,
             )
 
-        text = response["content"][0]["text"]
+        content = [_mcp_content_item(item) for item in response["content"]]
         return types.CallToolResult(
-            content=[types.TextContent(text=text)],
+            content=content,
             structuredContent=response["structuredContent"],
         )
 
     server.add_request_handler("tools/list", types.PaginatedRequestParams, list_tools)
     server.add_request_handler("tools/call", types.CallToolRequestParams, call_tool)
+
+
+def _mcp_content_item(item: dict[str, str]) -> types.ToolResultContent:
+    """Convert the project's JSON-shaped response content to MCP SDK models."""
+    if item.get("type") == "text" and isinstance(item.get("text"), str):
+        return types.TextContent(text=item["text"])
+    if (
+        item.get("type") == "image"
+        and isinstance(item.get("data"), str)
+        and isinstance(item.get("mimeType"), str)
+    ):
+        return types.ImageContent(data=item["data"], mimeType=item["mimeType"])
+    raise ValueError("MCP response contains unsupported content.")
 
 
 async def run_server() -> None:

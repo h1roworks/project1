@@ -215,3 +215,37 @@ class ProcessedQuery:
             filters=data.get("filters", {}),
             method=data.get("method", "rule"),
         )
+
+
+@dataclass
+class RetrievalResult:
+    """统一的检索结果，供 Dense/Sparse/Hybrid 检索层共同使用。
+
+    ``chunk_id`` 是命中文本块的稳定标识；``score`` 是当前检索器给出的
+    相关性分数（分数的具体计算方式由检索器决定）；``text`` 和 ``metadata``
+    让调用方无需再访问向量库就能展示结果和来源。
+    """
+
+    chunk_id: str
+    score: float
+    text: str
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """转换为可 JSON 序列化的普通字典。"""
+        return {
+            "chunk_id": self.chunk_id,
+            "score": self.score,
+            "text": self.text,
+            "metadata": self.metadata,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "RetrievalResult":
+        """从 :meth:`to_dict` 产生的字典还原对象。"""
+        return cls(
+            chunk_id=data["chunk_id"],
+            score=float(data["score"]),
+            text=data["text"],
+            metadata=data.get("metadata", {}),
+        )

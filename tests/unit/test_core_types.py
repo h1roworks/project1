@@ -14,6 +14,7 @@ from core.types import (
     Document,
     ImageRef,
     IMAGE_PLACEHOLDER_PATTERN,
+    RetrievalResult,
     extract_image_ids,
     make_image_placeholder,
 )
@@ -166,6 +167,22 @@ def test_chunk_record_json_serializable() -> None:
         dense_vector=[0.5], sparse_vector={"t": 1.0},
     )
     assert json.loads(json.dumps(rec.to_dict()))["dense_vector"] == [0.5]
+
+
+# ---------- RetrievalResult ----------
+
+def test_retrieval_result_roundtrip_and_json_serialization() -> None:
+    result = RetrievalResult(
+        chunk_id="doc-001_0000",
+        score=0.92,
+        text="RAG combines retrieval with generation.",
+        metadata={"source_path": "rag.md", "page": 1},
+    )
+
+    payload = result.to_dict()
+    assert set(payload) == {"chunk_id", "score", "text", "metadata"}
+    assert RetrievalResult.from_dict(payload) == result
+    assert json.loads(json.dumps(payload))["chunk_id"] == "doc-001_0000"
 
 
 # ---------- metadata.images 契约 ----------

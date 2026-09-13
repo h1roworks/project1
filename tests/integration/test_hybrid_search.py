@@ -255,3 +255,21 @@ def test_routes_run_concurrently() -> None:
 
     assert dense.saw_other is True
     assert sparse.saw_other is True
+
+
+def test_stage_callback_receives_dense_sparse_and_fusion_results() -> None:
+    processed = ProcessedQuery(
+        original_query="RAG", dense_query="RAG", sparse_terms={"rag": 1.0}
+    )
+    search, *_ = make_search(
+        processed,
+        dense=RecordingRetriever([result("dense")]),
+        sparse=RecordingRetriever([result("sparse")]),
+    )
+    stages = {}
+
+    search.search("RAG", on_stage=lambda name, values: stages.setdefault(name, values))
+
+    assert [item.chunk_id for item in stages["dense"]] == ["dense"]
+    assert [item.chunk_id for item in stages["sparse"]] == ["sparse"]
+    assert [item.chunk_id for item in stages["fusion"]] == ["dense", "sparse"]

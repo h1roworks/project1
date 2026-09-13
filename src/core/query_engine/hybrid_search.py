@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable
 from typing import Any
 
 from core.query_engine.dense_retriever import DenseRetriever
@@ -38,6 +39,7 @@ class HybridSearch:
         top_k: int = 10,
         filters: dict[str, Any] | None = None,
         trace: Any = None,
+        on_stage: Callable[[str, list[RetrievalResult]], None] | None = None,
     ) -> list[RetrievalResult]:
         """执行一次完整混合检索，并返回经过兜底过滤的 Top-K 结果。
 
@@ -63,14 +65,32 @@ class HybridSearch:
             pre_filters=pre_filters,
             trace=trace,
         )
+        self._notify_stage(on_stage, "dense", dense_results)
+        self._notify_stage(on_stage, "sparse", sparse_results)
         if not dense_results and not sparse_results:
             return []
 
         fused = self.fusion.fuse(
             dense_results, sparse_results, top_k=None, trace=trace
         )
+        self._notify_stage(on_stage, "fusion", fused)
         filtered = self._apply_metadata_filters(fused, processed.filters)
         return filtered[:top_k]
+
+    @staticmethod
+    def _notify_stage(
+        on_stage: Callable[[str, list[RetrievalResult]], None] | None,
+        stage: str,
+        results: list[RetrievalResult],
+    ) -> None:
+        """向可选观察者报告阶段结果，观察代码本身不能影响检索。"""
+        if on_stage is None:
+            return
+        try:
+            on_stage(stage, list(results))
+        except Exception:
+            # CLI / tracing 的展示错误不应破坏主查询链路。
+            pass
 
     def _candidate_limits(self, top_k: int) -> tuple[int, int]:
         """读取配置的双路候选数量；缺省时至少满足最终 Top-K。"""

@@ -12,7 +12,7 @@ if str(_SRC) not in sys.path:
 
 import streamlit as st
 
-from observability.dashboard.pages import overview
+from observability.dashboard.pages import data_browser, overview
 
 
 def _placeholder(title: str, description: str) -> Callable[[], None]:
@@ -31,15 +31,43 @@ def main() -> None:
 
     navigation = st.navigation(
         {
-            "概览": [st.Page(overview.render, title="系统总览", icon="🏠", default=True)],
+            "概览": [
+                st.Page(
+                    overview.render,
+                    title="系统总览",
+                    icon="🏠",
+                    url_path="overview",
+                    default=True,
+                )
+            ],
             "知识库管理": [
-                st.Page(_placeholder("数据浏览", "浏览已摄取的文档、Chunk 和图片"), title="数据浏览", icon="🗂️"),
-                st.Page(_placeholder("Ingestion 管理", "上传文件、触发摄取和管理文档"), title="Ingestion 管理", icon="📥"),
+                st.Page(data_browser.render, title="数据浏览", icon="🗂️", url_path="data-browser"),
+                st.Page(
+                    _placeholder("Ingestion 管理", "上传文件、触发摄取和管理文档"),
+                    title="Ingestion 管理",
+                    icon="📥",
+                    url_path="ingestion-manager",
+                ),
             ],
             "可观测性": [
-                st.Page(_placeholder("Ingestion 追踪", "查看每次文档摄取的处理链路"), title="Ingestion 追踪", icon="📈"),
-                st.Page(_placeholder("查询追踪", "查看每次检索查询的处理链路"), title="查询追踪", icon="🔎"),
-                st.Page(_placeholder("评估面板", "评估模块尚未启用"), title="评估面板", icon="🧪"),
+                st.Page(
+                    _placeholder("Ingestion 追踪", "查看每次文档摄取的处理链路"),
+                    title="Ingestion 追踪",
+                    icon="📈",
+                    url_path="ingestion-traces",
+                ),
+                st.Page(
+                    _placeholder("查询追踪", "查看每次检索查询的处理链路"),
+                    title="查询追踪",
+                    icon="🔎",
+                    url_path="query-traces",
+                ),
+                st.Page(
+                    _placeholder("评估面板", "评估模块尚未启用"),
+                    title="评估面板",
+                    icon="🧪",
+                    url_path="evaluation",
+                ),
             ],
         }
     )

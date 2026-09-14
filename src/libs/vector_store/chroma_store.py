@@ -128,6 +128,10 @@ class ChromaStore(BaseVectorStore):
             for index, chunk_id in enumerate(ids)
         ]
 
+    def get_by_metadata(self, key: str, value: Any) -> list[VectorMatch]:
+        """Compatibility-friendly name for Dashboard metadata browsing."""
+        return self.find_by_metadata(key, value)
+
     def delete_by_metadata(self, filters: dict[str, Any]) -> int:
         """Delete all chunks satisfying a Chroma metadata filter.
 

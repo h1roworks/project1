@@ -2035,7 +2035,7 @@ dashboard:
 |---------|---------|------|---------|------|
 | G1 | Dashboard 基础架构与系统总览页 | [x] | 2026-09-14 | Streamlit 六页面导航、系统总览组件配置卡片、Chroma 数据统计与启动脚本；2 项专属测试通过 |
 | G2 | DocumentManager 实现 | [x] | 2026-09-14 | 跨 Chroma、BM25、ImageStorage、FileIntegrity 的文档浏览、详情、删除与集合统计；4 项专属测试通过 |
-| G3 | 数据浏览器页面 | [ ] | | |
+| G3 | 数据浏览器页面 | [x] | 2026-09-14 | 数据浏览页支持 collection 筛选、文档/Chunk/图片查看；DataService 封装本地读取；2 项专属测试通过 |
 | G4 | Ingestion 管理页面 | [ ] | | |
 | G5 | Ingestion 追踪页面 | [ ] | | |
 | G6 | Query 追踪页面 | [ ] | | |

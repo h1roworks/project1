@@ -128,6 +128,19 @@ class ChromaStore(BaseVectorStore):
             for index, chunk_id in enumerate(ids)
         ]
 
+    def delete_by_metadata(self, filters: dict[str, Any]) -> int:
+        """Delete all chunks satisfying a Chroma metadata filter.
+
+        Chroma's ``delete`` does not report how many rows were affected, so we
+        first read matching IDs, then delete exactly those IDs and return their
+        count.  This makes Dashboard delete feedback accurate.
+        """
+        result = self._collection.get(where=filters, include=[])
+        ids = result.get("ids") or []
+        if ids:
+            self._collection.delete(ids=ids)
+        return len(ids)
+
     def get_collection_stats(self) -> dict[str, int | str]:
         """Return lightweight Dashboard statistics for this Chroma collection.
 

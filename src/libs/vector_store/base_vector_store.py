@@ -72,3 +72,14 @@ class BaseVectorStore(ABC):
         ID 补全为可直接展示、可生成引用的文本结果。
         """
         raise NotImplementedError
+
+    def delete_by_metadata(self, filters: dict[str, Any]) -> int:
+        """Delete every record matching metadata ``filters``.
+
+        This is an optional lifecycle-management capability.  Retrieval-only
+        backends can keep the default error, while a backend that supports
+        document deletion implements it for :class:`DocumentManager`.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support metadata deletion"
+        )

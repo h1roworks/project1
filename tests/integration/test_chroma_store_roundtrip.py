@@ -119,6 +119,17 @@ def test_find_by_metadata_returns_all_chunks_for_a_document(store: ChromaStore) 
     assert store.find_by_metadata("doc_id", "missing") == []
 
 
+def test_delete_by_metadata_removes_matching_chunks_only(store: ChromaStore) -> None:
+    _upsert_five(store)
+
+    deleted = store.delete_by_metadata({"page": 1})
+
+    assert deleted == 1
+    assert [match.id for match in store.find_by_metadata("doc_id", "doc-a")] == [
+        "chunk-0", "chunk-2", "chunk-3", "chunk-4"
+    ]
+
+
 # ---------- 工厂路由 ----------
 
 def test_factory_creates_chroma(tmp_path) -> None:

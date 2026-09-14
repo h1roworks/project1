@@ -257,6 +257,11 @@ class IngestionPipeline:
             current_stage = "split"
             stage_started = perf_counter()
             chunks = self._chunker.chunk(doc, trace=trace)
+            # Chroma is a single physical collection in this MVP.  Retaining
+            # the logical collection in each chunk's metadata lets the
+            # DocumentManager browse and delete documents safely by collection.
+            for chunk in chunks:
+                chunk.metadata["collection"] = collection
             self._report(on_progress, "split", 1, 1)
             elapsed_ms = _ms(stage_started)
             stages["split"] = {"chunks": len(chunks), "latency_ms": elapsed_ms}

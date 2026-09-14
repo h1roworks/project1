@@ -9,6 +9,10 @@
 - [项目概述](#-项目概述)
 - [分支说明](#-分支说明)
 - [快速开始](#-快速开始)
+- [配置说明](#-配置说明)
+- [MCP 客户端配置](#-mcp-客户端配置)
+- [Dashboard 使用指南](#-dashboard-使用指南)
+- [测试与验收](#-测试与验收)
 - [谁适合用这个项目 & 怎么用](#-谁适合用这个项目--怎么用)
 - [简历参考](#-简历参考)
 - [常见问题](#-常见问题)
@@ -121,6 +125,219 @@ setup
 Agent 会自动引导你完成全部配置流程。
 
 > 💡 如果不熟悉 Skill 的使用方式，请观看配套笔记中的 **Setup Skill 使用讲解视频**。
+
+### 3. 手动配置（不使用 Setup Skill）
+
+以下命令适用于 Windows PowerShell、macOS 和 Linux。项目要求 Python 3.10 或更高版本；推荐使用虚拟环境。
+
+```bash
+python -m venv .venv
+```
+
+Windows PowerShell：
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+macOS / Linux：
+
+```bash
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e '.[dev]'
+```
+
+安装完成后，复制或编辑 `config/settings.yaml`。不要把真实 API Key 写进 Git；优先使用环境变量：
+
+```powershell
+# Windows PowerShell
+$env:DASHSCOPE_API_KEY = "你的 DashScope API Key"
+```
+
+```bash
+# macOS / Linux
+export DASHSCOPE_API_KEY="你的 DashScope API Key"
+```
+
+配置中的 `llm.api_key`、`embedding.api_key` 和 `vision_llm.api_key` 可以写成 `${DASHSCOPE_API_KEY}`，程序启动时会读取对应环境变量。若使用 Ollama，则先启动本地 Ollama 服务并下载模型，例如 `ollama pull nomic-embed-text`，Embedding 不需要云端 API Key；LLM 仍需根据所选 Provider 配置。
+
+### 4. 摄取第一份文档
+
+当前 MVP 默认注册的是 `PDFLoader`，因此第一次运行请准备一个本地 PDF 文件：
+
+```bash
+python scripts/ingest.py --path "docs/first-paper.pdf" --collection demo
+```
+
+也可以摄取一个目录中的所有受支持文件：
+
+```bash
+python scripts/ingest.py --path "docs/" --collection demo
+```
+
+命令会依次执行 PDF 解析、Chunk 切分、Transform、Dense + Sparse 编码，以及 Chroma/BM25 写入。重复摄取同一个未变化的文件会自动跳过；需要强制重跑时添加 `--force`。`--config path/to/settings.yaml` 可指定其他配置文件。
+
+> 注意：`tests/fixtures/sample_documents/sample.md` 是测试夹具，不是当前默认 Loader 的可摄取示例。若要直接摄取 Markdown，需要先按 DEV_SPEC 扩展 Markdown Loader。
+
+### 5. 执行一次查询
+
+```bash
+python scripts/query.py --query "这份文档的主要结论是什么" --collection demo --verbose
+```
+
+输出会显示 Dense 召回、Sparse/BM25 召回、RRF Fusion 和最终 Top-K 结果。没有结果时，先检查是否成功运行了 `ingest.py`，以及查询使用的 collection 是否一致。
+
+### 6. 启动 Dashboard
+
+```bash
+python scripts/start_dashboard.py
+```
+
+然后打开 <http://localhost:8501>。也可以覆盖监听地址和端口：
+
+```bash
+python scripts/start_dashboard.py --host 127.0.0.1 --port 8502
+```
+
+### 7. 运行 MCP Server
+
+MCP Server 使用标准 stdio 通道，通常由 Copilot、Claude Desktop 等客户端拉起；需要手动检查时可以运行：
+
+```bash
+python -m mcp_server.server
+```
+
+此进程的 stdout 只用于 MCP 协议消息，日志会写入 stderr。直接运行后它会等待客户端输入，这是正常现象；更完整的客户端模拟请运行 I1 E2E 测试。
+
+---
+
+## ⚙️ 配置说明
+
+主配置文件是 `config/settings.yaml`。程序只在加载配置时做字段校验，不会因为读取配置而立即连接外部模型。
+
+| 配置段 | 关键字段 | 作用 |
+|------|------|------|
+| `llm` | `provider`、`model`、`api_key`、`base_url` | Chunk 增强、评估或其他需要文本生成的 LLM；支持项目中已注册的 Provider |
+| `embedding` | `provider`、`model`、`dimensions`、`batch_size` | Dense Embedding 模型；Ollama 使用本地 `base_url`，云端 Provider 使用 API Key |
+| `vision_llm` | `provider`、`model`、`max_image_size` | 图片描述；仅在启用视觉处理且文档包含图片时使用 |
+| `vector_store` | `provider`、`collection`、`persist_dir` | Chroma 向量库的物理目录和默认 collection |
+| `retrieval` | `top_k`、`dense_top_k`、`sparse_top_k`、`fusion_k` | Dense/Sparse 候选数量与 RRF 融合参数 |
+| `splitter` | `strategy`、`chunk_size`、`chunk_overlap` | 文档切分策略、Chunk 大小和重叠长度 |
+| `rerank` | `enabled`、`provider`、`top_m`、`model` | 是否启用 Cross-Encoder 或 LLM 精排 |
+| `evaluation` | `provider`、`metrics`、`golden_test_set_path` | 评估后端、指标和 Golden Test Set 路径 |
+| `observability` | `trace_file`、`dashboard.host`、`dashboard.port` | Trace 日志位置及 Dashboard 监听地址 |
+
+修改 Embedding 模型或维度后，建议使用新的 collection 或重新摄取全部文档，避免新旧向量混用。`data/db/chroma`、`data/db/bm25` 和 `logs` 是运行时数据目录，已被 Git 忽略。
+
+---
+
+## 🔌 MCP 客户端配置
+
+Server 暴露三个工具：
+
+| 工具 | 用途 | 必填参数 |
+|------|------|------|
+| `query_knowledge_hub` | 混合检索并返回 Markdown 与结构化引用 | `query` |
+| `list_collections` | 查看本地可用知识库集合 | 无 |
+| `get_document_summary` | 按文档 ID 查看标题、摘要、标签和来源 | `doc_id` |
+
+### GitHub Copilot（VS Code）
+
+在项目的 `.vscode/mcp.json` 中加入以下配置。把路径替换为你自己的项目路径；Windows JSON 中的反斜杠必须写成 `\\`。
+
+```json
+{
+  "servers": {
+    "smart-knowledge-hub": {
+      "type": "stdio",
+      "command": "C:\\path\\to\\project1\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "mcp_server.server"]
+    }
+  }
+}
+```
+
+macOS / Linux 将 `command` 改为 `/path/to/project1/.venv/bin/python`。安装了 editable package（`pip install -e .`）后，客户端可以直接找到 `mcp_server` 模块。
+
+### Claude Desktop
+
+在 Claude Desktop 的 `claude_desktop_config.json` 中加入：
+
+```json
+{
+  "mcpServers": {
+    "smart-knowledge-hub": {
+      "command": "C:\\path\\to\\project1\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "mcp_server.server"]
+    }
+  }
+}
+```
+
+保存后重启客户端，在工具列表中确认出现 `query_knowledge_hub`。如果工具没有出现，先在终端执行 `python -m mcp_server.server` 检查依赖与模块安装，再查看客户端的 stderr 或 MCP 日志。
+
+---
+
+## 🖥️ Dashboard 使用指南
+
+Dashboard 由 `scripts/start_dashboard.py` 启动，默认地址是 `http://localhost:8501`。六个页面的职责如下：
+
+| 页面 | 你可以做什么 |
+|------|------|
+| 系统总览 | 查看当前 LLM、Embedding、Splitter、Reranker、Evaluator 配置和 Chroma 数据统计 |
+| 数据浏览 | 按 collection 查看文档、Chunk 元数据和关联图片 |
+| Ingestion 管理 | 上传 PDF 或指定本地 PDF，观察进度，并删除已摄取文档 |
+| Ingestion 追踪 | 查看摄取历史、状态和各阶段耗时 |
+| 查询追踪 | 对比 Dense、Sparse、Fusion、Rerank 的查询链路和结果变化 |
+| 评估面板 | 选择 Custom/Ragas/Composite，运行 Golden Test Set 并查看指标与逐 query 结果 |
+
+### 截图示例（文字版）
+
+启动后的导航结构大致如下；真实页面中的数据来自本地 Chroma、BM25、图片索引和 `logs/traces.jsonl`：
+
+```text
+Smart Knowledge Hub
+├─ 系统总览       组件配置 · 文档数 · Chunk 数 · 图片数
+├─ 数据浏览       Collection · 文档 · Chunk · 图片
+├─ Ingestion 管理 上传 PDF · 进度 · 删除文档
+├─ Ingestion 追踪 摄取历史 · 阶段耗时
+├─ 查询追踪       Dense/Sparse 对比 · Rerank 变化
+└─ 评估面板       Golden Set · Hit Rate/MRR · 历史结果
+```
+
+首次打开页面没有数据时，先运行 `ingest.py`；执行过查询后，查询追踪页面才会有 Query trace。Dashboard 读取本地数据，不会自动替你上传文档或创建 API Key。
+
+---
+
+## 🧪 测试与验收
+
+在项目根目录、且已激活 `.venv` 的情况下运行：
+
+```bash
+# 全部测试
+python -m pytest -q
+
+# 单元测试：独立模块和边界行为
+python -m pytest -q tests/unit
+
+# 集成测试：模块之间的真实连接
+python -m pytest -q tests/integration
+
+# E2E：MCP Client、Dashboard 和 Recall
+python -m pytest -q tests/e2e
+```
+
+也可以单独验收 I1/I2：
+
+```bash
+python -m pytest -q tests/e2e/test_mcp_client.py
+python -m pytest -q tests/e2e/test_dashboard_smoke.py
+```
+
+I1 使用确定性测试服务验证 MCP Client 的 `tools/list` 和 `query_knowledge_hub` 调用；I2 使用 Streamlit `AppTest` 验证六个 Dashboard 页面无 Python 异常。H5 Recall 测试依赖本地已摄取的 Chroma/BM25 索引，在缺少索引时会给出明确的 skip，而不是把环境问题误报成代码回归。
 
 ---
 
@@ -323,6 +540,17 @@ Skill 采用 **"写作原则 + 项目亮点 + 用户画像 = 定制化简历"** 
 ---
 
 ## ❓ 常见问题
+
+### 0. API Key、依赖和连接问题怎么排查？
+
+| 现象 | 排查方式 |
+|------|------|
+| 提示 API Key 缺失或鉴权失败 | 确认当前终端已经设置 `$env:DASHSCOPE_API_KEY`（PowerShell）或 `export DASHSCOPE_API_KEY=...`（macOS/Linux），并检查 `settings.yaml` 中 Provider 与 Key 的环境变量名称一致 |
+| `ModuleNotFoundError` 或命令找不到 | 确认已激活 `.venv`，然后重新执行 `python -m pip install -e ".[dev]"`；也可以直接使用 `.venv/Scripts/python`（Windows）或 `.venv/bin/python`（macOS/Linux） |
+| Ollama 连接失败 | 确认 Ollama 服务正在运行、模型已下载，且 `embedding.base_url` 与本地服务地址一致；默认端口通常是 `11434` |
+| MCP 客户端看不到工具 | 先运行 `python -m mcp_server.server` 检查模块和依赖，再确认客户端配置中的 Python 路径指向项目虚拟环境，并重启客户端 |
+| Dashboard 打不开或端口被占用 | 使用 `python scripts/start_dashboard.py --port 8502` 换端口，或在 `settings.yaml` 的 `observability.dashboard.port` 中修改默认端口 |
+| 查询没有结果 | 先成功运行 `scripts/ingest.py`，确认查询的 `--collection` 与摄取时一致，并检查对应的 Chroma/BM25 数据目录是否存在 |
 
 ### 1. 如何切换 Provider（比如换成 Qwen / DeepSeek / Ollama）？
 

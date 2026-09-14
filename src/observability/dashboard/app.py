@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 _SRC = Path(__file__).resolve().parents[2]
@@ -12,17 +11,14 @@ if str(_SRC) not in sys.path:
 
 import streamlit as st
 
-from observability.dashboard.pages import data_browser, ingestion_manager, ingestion_traces, overview, query_traces
-
-
-def _placeholder(title: str, description: str) -> Callable[[], None]:
-    """Create a temporary page while its feature is implemented in later tasks."""
-
-    def render() -> None:
-        st.title(title)
-        st.info(f"{description}（将在后续 G 阶段任务中实现。）")
-
-    return render
+from observability.dashboard.pages import (
+    data_browser,
+    evaluation_panel,
+    ingestion_manager,
+    ingestion_traces,
+    overview,
+    query_traces,
+)
 
 
 def main() -> None:
@@ -63,7 +59,7 @@ def main() -> None:
                     url_path="query-traces",
                 ),
                 st.Page(
-                    _placeholder("评估面板", "评估模块尚未启用"),
+                    evaluation_panel.render,
                     title="评估面板",
                     icon="🧪",
                     url_path="evaluation",

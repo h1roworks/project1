@@ -12,7 +12,7 @@ if str(_SRC) not in sys.path:
 
 import streamlit as st
 
-from observability.dashboard.pages import data_browser, ingestion_manager, overview
+from observability.dashboard.pages import data_browser, ingestion_manager, ingestion_traces, overview
 
 
 def _placeholder(title: str, description: str) -> Callable[[], None]:
@@ -51,7 +51,7 @@ def main() -> None:
             ],
             "可观测性": [
                 st.Page(
-                    _placeholder("Ingestion 追踪", "查看每次文档摄取的处理链路"),
+                    ingestion_traces.render,
                     title="Ingestion 追踪",
                     icon="📈",
                     url_path="ingestion-traces",

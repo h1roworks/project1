@@ -220,7 +220,12 @@ class IngestionPipeline:
                     0.0,
                     method="integrity_check",
                     provider=type(self._integrity).__name__,
-                    details={"skipped": True, "reason": "already_ingested"},
+                    details={
+                        "source_path": path,
+                        "collection": collection,
+                        "skipped": True,
+                        "reason": "already_ingested",
+                    },
                 )
                 return IngestionResult(
                     source_path=path,
@@ -239,6 +244,8 @@ class IngestionPipeline:
             elapsed_ms = _ms(stage_started)
             stages["load"] = {
                 "doc_id": doc.id,
+                "source_path": path,
+                "collection": collection,
                 "images": len(doc.metadata.get("images", [])),
                 "latency_ms": elapsed_ms,
             }
@@ -349,7 +356,7 @@ class IngestionPipeline:
                 _ms(stage_started),
                 method="failed",
                 provider="pipeline",
-                details={"error": str(exc)},
+                details={"source_path": path, "collection": collection, "error": str(exc)},
             )
             self._integrity.mark_failed(file_hash, str(exc))
             return IngestionResult(

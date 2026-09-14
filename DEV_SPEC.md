@@ -2046,7 +2046,7 @@ dashboard:
 |---------|---------|------|---------|------|
 | H1 | RagasEvaluator 实现 | [x] | 2026-09-14 | 支持 Faithfulness、Answer Relevancy、Context Precision；Ragas 延迟导入并在依赖不可用时给出明确提示；4 项单元测试通过 |
 | H2 | CompositeEvaluator 实现 | [x] | 2026-09-14 | 支持多个 Evaluator 并行执行、指标合并与同名指标命名空间隔离；工厂支持 evaluation.backends 配置；4 项单元测试通过 |
-| H3 | EvalRunner + Golden Test Set | [ ] | | |
+| H3 | EvalRunner + Golden Test Set | [x] | 2026-09-14 | 新增 Golden Test Set、EvalRunner、评估命令行脚本；输出 hit_rate/mrr、评估器指标与逐 query 明细；3 项单元测试通过 |
 | H4 | 评估面板页面 | [ ] | | |
 | H5 | Recall 回归测试（E2E） | [ ] | | |
 

@@ -1,0 +1,16 @@
+{
+  "test_cases": [
+    {
+      "query": "RAG 的混合检索策略是什么？",
+      "expected_chunk_ids": ["sample_document_0002"],
+      "expected_sources": ["tests/fixtures/sample_documents/sample.md"],
+      "expected_answer": "混合检索结合 BM25、Dense Embedding 和 RRF Fusion。"
+    },
+    {
+      "query": "项目使用了什么协议？",
+      "expected_chunk_ids": ["sample_document_0002"],
+      "expected_sources": ["tests/fixtures/sample_documents/sample.md"],
+      "expected_answer": "项目使用 MCP Server 协议。"
+    }
+  ]
+}

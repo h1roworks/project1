@@ -2048,7 +2048,7 @@ dashboard:
 | H2 | CompositeEvaluator 实现 | [x] | 2026-09-14 | 支持多个 Evaluator 并行执行、指标合并与同名指标命名空间隔离；工厂支持 evaluation.backends 配置；4 项单元测试通过 |
 | H3 | EvalRunner + Golden Test Set | [x] | 2026-09-14 | 新增 Golden Test Set、EvalRunner、评估命令行脚本；输出 hit_rate/mrr、评估器指标与逐 query 明细；3 项单元测试通过 |
 | H4 | 评估面板页面 | [x] | 2026-09-14 | Dashboard 评估页支持后端选择、Golden Set 路径、运行评估、指标与逐 query 明细展示，并保留会话内历史结果；1 项单元测试通过 |
-| H5 | Recall 回归测试（E2E） | [ ] | | |
+| H5 | Recall 回归测试（E2E） | [x] | 2026-09-14 | 新增基于真实 Chroma/BM25 查询链路的 Golden Set hit_rate@K 回归测试；缺少本地索引时明确跳过；阈值固定为 0.50 |
 
 #### 阶段 I：端到端验收与文档收口
 

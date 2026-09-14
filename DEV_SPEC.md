@@ -2024,7 +2024,7 @@ dashboard:
 | 任务编号 | 任务名称 | 状态 | 完成日期 | 备注 |
 |---------|---------|------|---------|------|
 | F1 | TraceContext 增强（finish + 耗时统计 + trace_type） | [x] | 2026-09-14 | 支持 query/ingestion、阶段耗时、finish/to_dict 及可注入持久化的 TraceCollector；7 项单元测试通过 |
-| F2 | 结构化日志 logger（JSON Lines） | [ ] | | |
+| F2 | 结构化日志 logger（JSON Lines） | [x] | 2026-09-14 | JSONFormatter + FileHandler，将每条 trace 追加为 logs/traces.jsonl 中的一行合法 JSON；5 项单元测试通过 |
 | F3 | 在 Query 链路打点 | [ ] | | |
 | F4 | 在 Ingestion 链路打点 | [ ] | | |
 | F5 | Pipeline 进度回调 (on_progress) | [ ] | | |

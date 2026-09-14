@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 import chromadb
@@ -125,6 +127,53 @@ class ChromaStore(BaseVectorStore):
             )
             for index, chunk_id in enumerate(ids)
         ]
+
+    def get_collection_stats(self) -> dict[str, int | str]:
+        """Return lightweight Dashboard statistics for this Chroma collection.
+
+        Chroma stores chunks rather than top-level documents.  A document count
+        is therefore derived from distinct ``source_path`` values in chunk
+        metadata, and image count from distinct image references.  Empty or
+        older collections simply report zero for the unavailable dimensions.
+        """
+        result = self._collection.get(include=["metadatas"])
+        metadatas = result.get("metadatas") or []
+        sources: set[str] = set()
+        image_ids: set[str] = set()
+        for metadata in metadatas:
+            metadata = metadata or {}
+            source = metadata.get("source_path") or metadata.get("source")
+            if source:
+                sources.add(str(source))
+            image_ids.update(_image_ids(metadata.get("images")))
+
+        persist_dir = Path(self.settings.persist_dir or "data/db/chroma")
+        database_size = sum(
+            path.stat().st_size for path in persist_dir.rglob("*") if path.is_file()
+        ) if persist_dir.exists() else 0
+        return {
+            "collection": self.settings.collection or "default",
+            "documents": len(sources),
+            "chunks": self._collection.count(),
+            "images": len(image_ids),
+            "database_size_bytes": database_size,
+        }
+
+
+def _image_ids(raw_images: Any) -> set[str]:
+    """Extract image IDs from either native or JSON-serialized metadata."""
+    if isinstance(raw_images, str):
+        try:
+            raw_images = json.loads(raw_images)
+        except json.JSONDecodeError:
+            return set()
+    if not isinstance(raw_images, list):
+        return set()
+    return {
+        str(item["id"])
+        for item in raw_images
+        if isinstance(item, dict) and item.get("id") not in (None, "")
+    }
 
 
 VectorStoreFactory.register("chroma", ChromaStore)

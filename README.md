@@ -202,6 +202,14 @@ python scripts/start_dashboard.py
 python scripts/start_dashboard.py --host 127.0.0.1 --port 8502
 ```
 
+`start_dashboard.py` now starts the Dashboard in the background by default. You may close the launching terminal after it prints the URL. Use these commands to manage it:
+
+```bash
+python scripts/start_dashboard.py --status
+python scripts/start_dashboard.py --stop
+python scripts/start_dashboard.py --foreground  # keep logs attached to this terminal
+```
+
 ### 7. 运行 MCP Server
 
 MCP Server 使用标准 stdio 通道，通常由 Copilot、Claude Desktop 等客户端拉起；需要手动检查时可以运行：

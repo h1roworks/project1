@@ -51,7 +51,14 @@ class Reranker:
             reranked = self._run_with_timeout(query, pool, trace)
             results = self._merge_reranked(reranked, pool, tail, backend_name)
             _record_rerank_trace(
-                trace, started, backend_name, len(candidates), len(results), fallback=False
+                trace,
+                started,
+                backend_name,
+                len(candidates),
+                len(results),
+                fallback=False,
+                before_ids=[item.chunk_id for item in candidates],
+                after_ids=[item.chunk_id for item in results],
             )
             return results
         except Exception as exc:  # 任何后端/超时问题均保留 D5 的融合排序
@@ -64,6 +71,8 @@ class Reranker:
                 len(results),
                 fallback=True,
                 error=str(exc),
+                before_ids=[item.chunk_id for item in candidates],
+                after_ids=[item.chunk_id for item in results],
             )
             return results
 
@@ -187,6 +196,8 @@ def _record_rerank_trace(
     fallback: bool = False,
     skipped: bool = False,
     error: str | None = None,
+    before_ids: list[str] | None = None,
+    after_ids: list[str] | None = None,
 ) -> None:
     """记录 rerank 的结果；观察失败不应改变原有回退语义。"""
     if trace is None or not callable(getattr(trace, "record_stage", None)):
@@ -196,6 +207,8 @@ def _record_rerank_trace(
         "result_count": result_count,
         "fallback": fallback,
         "skipped": skipped,
+        "before_ids": before_ids or [],
+        "after_ids": after_ids or [],
     }
     if error:
         details["error"] = error

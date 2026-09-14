@@ -2038,7 +2038,7 @@ dashboard:
 | G3 | 数据浏览器页面 | [x] | 2026-09-14 | 数据浏览页支持 collection 筛选、文档/Chunk/图片查看；DataService 封装本地读取；2 项专属测试通过 |
 | G4 | Ingestion 管理页面 | [x] | 2026-09-14 | 支持 PDF 上传/本机路径摄取、Pipeline 进度展示和确认式跨存储删除；3 项专属测试通过 |
 | G5 | Ingestion 追踪页面 | [x] | 2026-09-14 | TraceService 解析 JSONL、历史列表、状态与阶段耗时图；2 项专属测试通过 |
-| G6 | Query 追踪页面 | [ ] | | |
+| G6 | Query 追踪页面 | [x] | 2026-09-14 | Query 关键词筛选、阶段耗时、Dense/Sparse 召回与 Rerank 排序对比；1 项专属测试通过 |
 
 #### 阶段 H：评估体系
 

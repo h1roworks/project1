@@ -64,6 +64,7 @@ class HybridSearch:
             method=getattr(processed, "method", "rule"),
             provider="local",
             details={
+                "query": query,
                 "keyword_count": len(processed.keywords),
                 "sparse_term_count": len(processed.sparse_terms),
                 "filter_keys": sorted(processed.filters),
@@ -266,6 +267,14 @@ def _record_retrieval_trace(
         "result_count": len(results),
         "top_k": top_k,
         "skipped": bool(info.get("skipped", False)),
+        "results": [
+            {
+                "chunk_id": item.chunk_id,
+                "score": float(item.score),
+                "source": item.metadata.get("source_path", ""),
+            }
+            for item in results
+        ],
     }
     if info.get("error"):
         details["error"] = info["error"]

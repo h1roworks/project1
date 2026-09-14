@@ -48,6 +48,18 @@ class IngestionTrace:
         return None
 
 
+@dataclass(frozen=True)
+class QueryTrace:
+    """A display-ready query trace, including retrieval comparisons."""
+
+    trace_id: str
+    started_at: str
+    finished_at: str | None
+    total_elapsed_ms: float
+    query: str
+    stages: list[TraceStage]
+
+
 class TraceService:
     """Load only ``trace_type == ingestion`` records from JSON Lines storage."""
 
@@ -78,6 +90,24 @@ class TraceService:
                 continue
             if isinstance(raw, dict) and raw.get("trace_type") == "ingestion":
                 traces.append(self._parse(raw))
+        return sorted(traces, key=lambda item: _sort_key(item.started_at), reverse=True)
+
+    def list_query_traces(self, query_filter: str = "") -> list[QueryTrace]:
+        """Return query traces newest first, optionally matching query text."""
+        if not self.trace_file.exists():
+            return []
+        traces: list[QueryTrace] = []
+        needle = query_filter.strip().casefold()
+        for line in self.trace_file.read_text(encoding="utf-8").splitlines():
+            try:
+                raw = json.loads(line)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if not isinstance(raw, dict) or raw.get("trace_type") != "query":
+                continue
+            trace = self._parse_query(raw)
+            if not needle or needle in trace.query.casefold():
+                traces.append(trace)
         return sorted(traces, key=lambda item: _sort_key(item.started_at), reverse=True)
 
     @staticmethod
@@ -117,6 +147,37 @@ class TraceService:
             source_path=source_path,
             collection=collection,
             status="failed" if failed else "skipped" if skipped else "success",
+            stages=stages,
+        )
+
+    @staticmethod
+    def _parse_query(raw: dict[str, Any]) -> QueryTrace:
+        stages: list[TraceStage] = []
+        query = ""
+        for stage_raw in raw.get("stages") or []:
+            if not isinstance(stage_raw, dict) or not stage_raw.get("name"):
+                continue
+            details = stage_raw.get("details")
+            details = dict(details) if isinstance(details, dict) else {}
+            query = query or str(details.get("query") or "")
+            stages.append(
+                TraceStage(
+                    name=str(stage_raw["name"]),
+                    elapsed_ms=_number(stage_raw.get("elapsed_ms", 0)),
+                    method=str(stage_raw.get("method") or ""),
+                    provider=str(stage_raw.get("provider") or ""),
+                    details=details,
+                )
+            )
+        total = _number(raw.get("total_elapsed_ms", 0))
+        if total <= 0:
+            total = sum(stage.elapsed_ms for stage in stages)
+        return QueryTrace(
+            trace_id=str(raw.get("trace_id") or "unknown"),
+            started_at=str(raw.get("started_at") or ""),
+            finished_at=str(raw["finished_at"]) if raw.get("finished_at") else None,
+            total_elapsed_ms=total,
+            query=query,
             stages=stages,
         )
 

@@ -48,8 +48,28 @@ def test_none_reranker_keeps_order() -> None:
     assert [c.id for c in reranker.rerank("q", cands)] == ["a", "b", "c"]
 
 
+def test_none_reranker_returns_a_new_list() -> None:
+    cands = make_candidates()
+    ranked = NoneReranker().rerank("q", cands)
+
+    assert ranked == cands
+    assert ranked is not cands
+
+
 def test_disabled_reranker_returns_none_even_for_registered_backend() -> None:
     reranker = RerankerFactory.create(make_settings(provider="fake", enabled=False))
+    assert isinstance(reranker, NoneReranker)
+
+
+def test_disabled_reranker_returns_none_even_for_unknown_backend() -> None:
+    reranker = RerankerFactory.create(make_settings(provider="unknown", enabled=False))
+
+    assert isinstance(reranker, NoneReranker)
+
+
+def test_none_provider_defaults_to_fallback_when_enabled_is_omitted() -> None:
+    reranker = RerankerFactory.create(RerankSettings(provider="none"))
+
     assert isinstance(reranker, NoneReranker)
 
 

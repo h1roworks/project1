@@ -48,6 +48,26 @@ def test_metrics_stable_types() -> None:
     assert all(isinstance(v, float) for v in metrics.values())
 
 
+def test_duplicate_retrieved_ids_use_their_first_rank() -> None:
+    metrics = evaluate(["miss", "hit", "hit"], ["hit"])
+
+    assert metrics == {"hit_rate": 1.0, "mrr": 0.5}
+
+
+def test_duplicate_golden_ids_do_not_change_metrics() -> None:
+    assert evaluate(["hit"], ["hit", "hit"]) == {
+        "hit_rate": 1.0,
+        "mrr": 1.0,
+    }
+
+
+def test_trace_is_optional_and_does_not_change_metrics() -> None:
+    assert CustomEvaluator().evaluate("q", ["hit"], ["hit"], trace=object()) == {
+        "hit_rate": 1.0,
+        "mrr": 1.0,
+    }
+
+
 # ---------- Evaluator 工厂 ----------
 
 def test_factory_creates_custom() -> None:

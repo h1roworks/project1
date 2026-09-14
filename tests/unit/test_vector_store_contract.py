@@ -56,6 +56,16 @@ class InMemoryStore(BaseVectorStore):
             if (rec := self._records.get(chunk_id)) is not None
         ]
 
+    def delete_by_metadata(self, filters: dict) -> int:
+        matched_ids = [
+            record_id
+            for record_id, record in self._records.items()
+            if all(record.metadata.get(key) == value for key, value in filters.items())
+        ]
+        for record_id in matched_ids:
+            del self._records[record_id]
+        return len(matched_ids)
+
 
 def make_record(i: int) -> VectorRecord:
     return VectorRecord(
@@ -118,6 +128,35 @@ def test_get_by_ids_preserves_requested_order_and_skips_missing(store: InMemoryS
     results = store.get_by_ids(["chunk-3", "missing", "chunk-1"])
     assert [result.id for result in results] == ["chunk-3", "chunk-1"]
     assert results[0].text == "text-3"
+
+
+# ---------- 契约：delete_by_metadata ----------
+
+def test_delete_by_metadata_removes_only_matching_records(store: InMemoryStore) -> None:
+    assert store.delete_by_metadata({"page": 1}) == 1
+    assert [result.id for result in store.get_by_ids([f"chunk-{i}" for i in range(5)])] == [
+        "chunk-0", "chunk-2", "chunk-3", "chunk-4"
+    ]
+
+
+def test_delete_by_metadata_returns_zero_for_no_match(store: InMemoryStore) -> None:
+    assert store.delete_by_metadata({"page": 999}) == 0
+    assert len(store.query([1.0, 1.0, 0.0], top_k=10)) == 5
+
+
+def test_base_store_reports_unsupported_metadata_deletion() -> None:
+    class RetrievalOnlyStore(BaseVectorStore):
+        def upsert(self, records, trace=None):
+            return len(records)
+
+        def query(self, vector, top_k=10, filters=None, trace=None):
+            return []
+
+        def get_by_ids(self, ids, trace=None):
+            return []
+
+    with pytest.raises(NotImplementedError, match="does not support metadata deletion"):
+        RetrievalOnlyStore().delete_by_metadata({"doc_id": "doc-a"})
 
 
 # ---------- 契约：工厂路由 ----------

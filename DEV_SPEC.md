@@ -2027,7 +2027,7 @@ dashboard:
 | F2 | 结构化日志 logger（JSON Lines） | [x] | 2026-09-14 | JSONFormatter + FileHandler，将每条 trace 追加为 logs/traces.jsonl 中的一行合法 JSON；5 项单元测试通过 |
 | F3 | 在 Query 链路打点 | [x] | 2026-09-14 | MCP 查询入口创建并持久化 query trace；记录 query_processing、dense/sparse_retrieval、fusion、rerank 五阶段耗时与详情 |
 | F4 | 在 Ingestion 链路打点 | [x] | 2026-09-14 | Pipeline 创建并持久化 ingestion trace，记录 load/split/transform/embed/upsert 五阶段耗时、方法和处理统计 |
-| F5 | Pipeline 进度回调 (on_progress) | [ ] | | |
+| F5 | Pipeline 进度回调 (on_progress) | [x] | 2026-09-14 | 各摄取阶段及 embed/upsert 批次调用 on_progress(stage, current, total)；回调异常不影响入库；2 项专属测试通过 |
 
 #### 阶段 G：可视化管理平台 Dashboard
 

@@ -497,9 +497,13 @@ class IngestionPipeline:
         current: int,
         total: int,
     ) -> None:
-        """回调进度；on_progress 为 None 时跳过（与不传行为一致）。"""
-        if on_progress is not None:
+        """回调进度；观测层回调失败不能中断文档摄取。"""
+        if on_progress is None:
+            return
+        try:
             on_progress(stage, current, total)
+        except Exception:
+            pass
 
 
 # ---------- 私有工具函数 ----------

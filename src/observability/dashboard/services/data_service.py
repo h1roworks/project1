@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from core.settings import Settings
-from ingestion.document_manager import DocumentDetail, DocumentInfo, DocumentManager
+from ingestion.document_manager import DeleteResult, DocumentDetail, DocumentInfo, DocumentManager
 from ingestion.storage.bm25_indexer import BM25Indexer
 from ingestion.storage.image_storage import ImageStorage
 from libs.loader.file_integrity import SQLiteIntegrityChecker
@@ -15,7 +15,7 @@ from observability.dashboard.services.config_service import ConfigService
 
 
 class DataService:
-    """Compose local stores into a small, read-only Dashboard API.
+    """Compose local stores into a small Dashboard data-access API.
 
     Page code should use this service instead of knowing how Chroma, SQLite
     image mappings, BM25, and ingestion history are wired together.
@@ -81,3 +81,7 @@ class DataService:
     def read_image(self, image_id: str) -> bytes | None:
         """Return raw image bytes suitable for ``st.image``, if still present."""
         return self._image_storage.read_image(image_id)
+
+    def delete_document(self, source_path: str, collection: str) -> DeleteResult:
+        """Delegate a managed document deletion to G2's lifecycle service."""
+        return self._document_manager.delete_document(source_path, collection)

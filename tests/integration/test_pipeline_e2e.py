@@ -61,6 +61,7 @@ def pipeline(tmp_path):
             images_dir=tmp_path / "images", db_path=tmp_path / "db" / "img.db"
         ),
         bm25_dir=tmp_path / "bm25",  # 不注入实例 → 测按 collection 自动创建路径
+        trace_writer=lambda _trace: None,
     )
     yield pipe
     try:

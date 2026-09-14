@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from typing import Any
 
 from core.settings import SplitterSettings
 from core.types import Chunk, Document, extract_image_ids
@@ -35,14 +36,18 @@ class DocumentChunker:
         self._settings = settings or SplitterSettings()
         self._splitter = splitter or SplitterFactory.create(self._settings)
 
-    def chunk(self, document: Document) -> list[Chunk]:
+    def chunk(self, document: Document, trace: Any = None) -> list[Chunk]:
         """把文档切分为 Chunk 列表（空文本返回空列表，纯空白片段被跳过）。"""
         if not document.text:
             return []
 
         chunks: list[Chunk] = []
         search_from = 0
-        pieces = [p for p in self._splitter.split_text(document.text) if p.strip()]
+        pieces = [
+            piece
+            for piece in self._splitter.split_text(document.text, trace=trace)
+            if piece.strip()
+        ]
         for index, text in enumerate(pieces):
             start, end = _find_text_span(document.text, text, search_from)
             search_from = end

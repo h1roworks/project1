@@ -29,7 +29,11 @@ from libs.vector_store.base_vector_store import BaseVectorStore, VectorMatch, Ve
 class FakeEmbedding:
     """确定性向量：文本越长向量值越大，便于后续排序断言。"""
 
+    def __init__(self) -> None:
+        self.traces = []
+
     def embed(self, texts, trace=None):
+        self.traces.append(trace)
         return [[float(len(t)), 0.5, 1.0] for t in texts]
 
 
@@ -72,8 +76,10 @@ class FakeVectorStore(BaseVectorStore):
 
     def __init__(self) -> None:
         self._records: dict[str, VectorRecord] = {}
+        self.traces = []
 
     def upsert(self, records, trace=None) -> int:
+        self.traces.append(trace)
         for record in records:
             self._records[record.id] = record
         return len(records)
@@ -117,7 +123,7 @@ def _write(path, content: str) -> str:
     return str(path)
 
 
-def _build_pipeline(tmp_path, loader=None, vector_store=None) -> IngestionPipeline:
+def _build_pipeline(tmp_path, loader=None, vector_store=None, trace_writer=lambda _trace: None) -> IngestionPipeline:
     """注入模式装配 pipeline：所有外部依赖落在 tmp_path，不污染真实 data/。"""
     return IngestionPipeline(
         loaders=[loader or FakeLoader()],
@@ -128,6 +134,7 @@ def _build_pipeline(tmp_path, loader=None, vector_store=None) -> IngestionPipeli
             images_dir=tmp_path / "images", db_path=tmp_path / "db" / "img.db"
         ),
         bm25_indexer=BM25Indexer(index_path=tmp_path / "bm25" / "index.pkl"),
+        trace_writer=trace_writer,
     )
 
 
@@ -215,6 +222,7 @@ def test_settings_default_collection(tmp_path) -> None:
             images_dir=tmp_path / "images", db_path=tmp_path / "db" / "img.db"
         ),
         bm25_indexer=BM25Indexer(index_path=tmp_path / "bm25" / "index.pkl"),
+        trace_writer=lambda _trace: None,
     )
     src = _write(tmp_path / "doc.md", "content for collection test")
     result = pipe.run(src)
@@ -244,3 +252,26 @@ def test_images_saved_when_present(tmp_path) -> None:
 
     assert result.total_images == 1
     assert pipe._image_storage.exists("img1")
+
+
+def test_pipeline_persists_complete_ingestion_trace(tmp_path) -> None:
+    """F4: Pipeline 创建一份 trace，贯穿五个摄取阶段并交给 F2 写入。"""
+    persisted = []
+    store = FakeVectorStore()
+    pipe = _build_pipeline(tmp_path, vector_store=store, trace_writer=persisted.append)
+    src = _write(tmp_path / "doc.md", "trace the ingestion pipeline")
+
+    result = pipe.run(src, collection="test")
+
+    assert result.error is None
+    assert len(persisted) == 1
+    trace = persisted[0]
+    assert trace["trace_type"] == "ingestion"
+    assert trace["finished_at"] is not None
+    assert [stage["name"] for stage in trace["stages"]] == [
+        "load", "split", "transform", "embed", "upsert",
+    ]
+    assert all(stage["elapsed_ms"] >= 0 for stage in trace["stages"])
+    assert all(stage["method"] for stage in trace["stages"])
+    assert pipe._embedding.traces[0].trace_id == trace["trace_id"]
+    assert store.traces[0].trace_id == trace["trace_id"]

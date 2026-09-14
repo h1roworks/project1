@@ -27,6 +27,7 @@ from time import perf_counter
 from typing import Any, Callable
 
 from core.settings import Settings
+from core.trace import TraceCollector, TraceContext
 from core.types import Document, ImageRef
 from ingestion.chunking.document_chunker import DocumentChunker
 from ingestion.embedding.batch_processor import BatchProcessor
@@ -46,6 +47,7 @@ from libs.loader.file_integrity import FileIntegrityChecker, SQLiteIntegrityChec
 from libs.loader.pdf_loader import PDFLoader
 from libs.vector_store.base_vector_store import BaseVectorStore
 from libs.vector_store.vector_store_factory import VectorStoreFactory
+from observability.logger import write_trace
 
 DEFAULT_COLLECTION = "default"
 DEFAULT_BM25_DIR = "data/db/bm25"
@@ -116,6 +118,7 @@ class IngestionPipeline:
         image_storage: ImageStorage | None = None,
         transforms: list[BaseTransform] | None = None,
         bm25_dir: str | Path = DEFAULT_BM25_DIR,
+        trace_writer: Callable[[dict[str, Any]], None] = write_trace,
     ) -> None:
         """初始化。
 
@@ -174,6 +177,7 @@ class IngestionPipeline:
         self._bm25_dir = Path(bm25_dir)
         self._bm25_indexers: dict[str, BM25Indexer] = {}
         self._upserters: dict[str, VectorUpserter] = {}
+        self._trace_writer = trace_writer
 
     # ---------- 主流程 ----------
 
@@ -204,53 +208,123 @@ class IngestionPipeline:
 
         collection = collection or self._default_collection
         file_hash = self._integrity.compute_sha256(path)
-        if self._integrity.should_skip(file_hash):
-            return IngestionResult(
-                source_path=path,
-                collection=collection,
-                file_hash=file_hash,
-                skipped=True,
-            )
-
-        self._integrity.mark_processing(file_hash, path)
+        trace = TraceContext(trace_type="ingestion")
         stages: dict[str, Any] = {}
+        current_stage = "load"
+        stage_started = perf_counter()
         try:
+            if self._integrity.should_skip(file_hash):
+                _record_trace_stage(
+                    trace,
+                    "load",
+                    0.0,
+                    method="integrity_check",
+                    provider=type(self._integrity).__name__,
+                    details={"skipped": True, "reason": "already_ingested"},
+                )
+                return IngestionResult(
+                    source_path=path,
+                    collection=collection,
+                    file_hash=file_hash,
+                    skipped=True,
+                )
+
+            self._integrity.mark_processing(file_hash, path)
+
             # ---- load ----
             self._report(on_progress, "load", 0, 1)
-            t0 = perf_counter()
+            stage_started = perf_counter()
             doc = self._load(path)
             self._report(on_progress, "load", 1, 1)
+            elapsed_ms = _ms(stage_started)
             stages["load"] = {
                 "doc_id": doc.id,
                 "images": len(doc.metadata.get("images", [])),
-                "latency_ms": _ms(t0),
+                "latency_ms": elapsed_ms,
             }
+            _record_trace_stage(
+                trace,
+                "load",
+                elapsed_ms,
+                method=str(doc.metadata.get("loader", "loader")),
+                provider=type(next(
+                    loader for loader in self._loaders if loader.can_handle(path)
+                )).__name__,
+                details=stages["load"],
+            )
 
             # ---- split ----
-            t0 = perf_counter()
-            chunks = self._chunker.chunk(doc)
+            current_stage = "split"
+            stage_started = perf_counter()
+            chunks = self._chunker.chunk(doc, trace=trace)
             self._report(on_progress, "split", 1, 1)
-            stages["split"] = {"chunks": len(chunks), "latency_ms": _ms(t0)}
+            elapsed_ms = _ms(stage_started)
+            stages["split"] = {"chunks": len(chunks), "latency_ms": elapsed_ms}
+            splitter = self._chunker._splitter
+            _record_trace_stage(
+                trace,
+                "split",
+                elapsed_ms,
+                method=getattr(splitter, "strategy", "splitter"),
+                provider=type(splitter).__name__,
+                details=stages["split"],
+            )
 
             # ---- transform ----
-            t0 = perf_counter()
+            current_stage = "transform"
+            stage_started = perf_counter()
             enriched = chunks
             for idx, transform in enumerate(self._transforms, start=1):
-                enriched = transform.transform_many(enriched)
+                enriched = transform.transform_many(enriched, trace=trace)
                 self._report(on_progress, "transform", idx, len(self._transforms))
+            elapsed_ms = _ms(stage_started)
             stages["transform"] = {
                 "applied": len(self._transforms),
-                "latency_ms": _ms(t0),
+                "latency_ms": elapsed_ms,
             }
+            _record_trace_stage(
+                trace,
+                "transform",
+                elapsed_ms,
+                method="transform_chain",
+                provider=",".join(
+                    getattr(transform, "name", type(transform).__name__)
+                    for transform in self._transforms
+                ),
+                details={**stages["transform"], "chunk_count": len(enriched)},
+            )
 
             # ---- embed ----
-            records = self._encode(enriched, on_progress, stages)
+            current_stage = "embed"
+            stage_started = perf_counter()
+            records = self._encode(enriched, on_progress, stages, trace)
+            _record_trace_stage(
+                trace,
+                "embed",
+                stages["embed"]["latency_ms"],
+                method="dense_sparse",
+                provider=getattr(
+                    self._embedding, "provider", type(self._embedding).__name__
+                ),
+                details=stages["embed"],
+            )
 
             # ---- upsert（含图片落盘） ----
-            t0 = perf_counter()
+            current_stage = "upsert"
+            stage_started = perf_counter()
             images_saved = self._save_images(doc, collection, file_hash)
-            self._upsert(records, collection, images_saved, on_progress, stages)
-            stages["upsert"]["latency_ms"] = _ms(t0)
+            self._upsert(records, collection, images_saved, on_progress, stages, trace)
+            stages["upsert"]["latency_ms"] = _ms(stage_started)
+            _record_trace_stage(
+                trace,
+                "upsert",
+                stages["upsert"]["latency_ms"],
+                method="vector_bm25_upsert",
+                provider=getattr(
+                    self._vector_store, "provider", type(self._vector_store).__name__
+                ),
+                details=stages["upsert"],
+            )
 
             self._integrity.mark_success(file_hash, path, len(chunks))
             return IngestionResult(
@@ -264,6 +338,14 @@ class IngestionPipeline:
                 stages=stages,
             )
         except Exception as exc:  # noqa: BLE001 - 兜底：记录 failed 并返回错误结果
+            _record_trace_stage(
+                trace,
+                current_stage,
+                _ms(stage_started),
+                method="failed",
+                provider="pipeline",
+                details={"error": str(exc)},
+            )
             self._integrity.mark_failed(file_hash, str(exc))
             return IngestionResult(
                 source_path=path,
@@ -273,6 +355,12 @@ class IngestionPipeline:
                 stages=stages,
                 error=str(exc),
             )
+        finally:
+            try:
+                TraceCollector(persist=self._trace_writer).collect(trace)
+            except Exception:
+                # 日志目录不可写等观测故障，不能影响已完成的文档摄取。
+                pass
 
     # ---------- 阶段执行 ----------
 
@@ -289,6 +377,7 @@ class IngestionPipeline:
         chunks: list[Any],
         on_progress: Callable[[str, int, int], None] | None,
         stages: dict[str, Any],
+        trace: TraceContext,
     ) -> list[Any]:
         """Dense + Sparse 双路编码（逐批上报进度），返回 ChunkRecord 列表。"""
         if not chunks:
@@ -304,7 +393,7 @@ class IngestionPipeline:
         records: list[Any] = []
         ranges = self._batch_processor.batch_ranges(len(chunks))
         for idx, (start, end) in enumerate(ranges, start=1):
-            records.extend(self._batch_processor.process(chunks[start:end]))
+            records.extend(self._batch_processor.process(chunks[start:end], trace=trace))
             self._report(on_progress, "embed", idx, len(ranges))
         stages["embed"] = {
             "records": len(records),
@@ -353,6 +442,7 @@ class IngestionPipeline:
         images_saved: int,
         on_progress: Callable[[str, int, int], None] | None,
         stages: dict[str, Any],
+        trace: TraceContext,
     ) -> None:
         """把 ChunkRecord 写入向量库 + BM25（逐批上报进度），并填入 stages。"""
         if not records:
@@ -377,7 +467,7 @@ class IngestionPipeline:
         vector_count = 0
         bm25_count = 0
         for idx, (start, end) in enumerate(ranges, start=1):
-            result = upserter.upsert(records[start:end])
+            result = upserter.upsert(records[start:end], trace=trace)
             vector_count += result.vector_store_count
             bm25_count += result.bm25_count
             self._report(on_progress, "upsert", idx, len(ranges))
@@ -418,6 +508,28 @@ class IngestionPipeline:
 def _ms(t0: float) -> int:
     """距 ``t0`` 的毫秒耗时（整型，便于日志/展示）。"""
     return int((perf_counter() - t0) * 1000)
+
+
+def _record_trace_stage(
+    trace: TraceContext,
+    stage_name: str,
+    elapsed_ms: float,
+    *,
+    method: str,
+    provider: str,
+    details: dict[str, Any],
+) -> None:
+    """记录阶段数据；观测功能本身不能使摄取链路失败。"""
+    try:
+        trace.record_stage(
+            stage_name,
+            elapsed_ms,
+            method=method,
+            provider=provider,
+            details=details,
+        )
+    except Exception:
+        pass
 
 
 def _to_image_ref(entry: Any) -> ImageRef | None:

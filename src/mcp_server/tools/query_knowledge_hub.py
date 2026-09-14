@@ -15,7 +15,9 @@ from core.query_engine.sparse_retriever import SparseRetriever
 from core.response.multimodal_assembler import MultimodalAssembler
 from core.response.response_builder import MCPResponse, ResponseBuilder
 from core.settings import Settings, load_settings
+from core.trace import TraceCollector, TraceContext
 from ingestion.storage.bm25_indexer import BM25Indexer
+from observability.logger import write_trace
 
 
 QUERY_KNOWLEDGE_HUB_SCHEMA: dict[str, Any] = {
@@ -76,6 +78,7 @@ class QueryKnowledgeHubTool:
         engine_factory: Callable[[str | None], tuple[HybridSearch, Reranker]] | None = None,
         response_builder: ResponseBuilder | None = None,
         multimodal_assembler: MultimodalAssembler | None = None,
+        trace_writer: Callable[[dict[str, Any]], None] = write_trace,
     ) -> None:
         if (hybrid_search is None) != (reranker is None):
             raise ValueError("hybrid_search and reranker must be provided together.")
@@ -92,6 +95,7 @@ class QueryKnowledgeHubTool:
         self.multimodal_assembler = multimodal_assembler or MultimodalAssembler(
             storage_factory=lambda: _build_image_storage()
         )
+        self._trace_writer = trace_writer
 
     @classmethod
     def from_config(cls, config_path: str | Path = _DEFAULT_CONFIG_PATH) -> "QueryKnowledgeHubTool":
@@ -114,11 +118,17 @@ class QueryKnowledgeHubTool:
         normalized_collection = self._validate_collection(collection)
         hybrid_search, reranker = self._get_engine(normalized_collection)
         filters = {"collection": normalized_collection} if normalized_collection else None
-        candidates = hybrid_search.search(normalized_query, top_k=limit, filters=filters)
-        results = reranker.rerank(normalized_query, candidates)
-        selected_results = results[:limit]
-        response = self.response_builder.build(selected_results, normalized_query)
-        return self.multimodal_assembler.assemble(response, selected_results)
+        trace = TraceContext(trace_type="query")
+        try:
+            candidates = hybrid_search.search(
+                normalized_query, top_k=limit, filters=filters, trace=trace
+            )
+            results = reranker.rerank(normalized_query, candidates, trace=trace)
+            selected_results = results[:limit]
+            response = self.response_builder.build(selected_results, normalized_query)
+            return self.multimodal_assembler.assemble(response, selected_results)
+        finally:
+            TraceCollector(persist=self._trace_writer).collect(trace)
 
     def _get_engine(self, collection: str | None) -> tuple[HybridSearch, Reranker]:
         if self._static_engine is not None:

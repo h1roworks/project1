@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Callable
+from time import perf_counter
 from typing import Any
 
 from core.query_engine.dense_retriever import DenseRetriever
 from core.query_engine.fusion import Fusion
 from core.query_engine.query_processor import QueryProcessor
 from core.query_engine.sparse_retriever import SparseRetriever
+from core.trace import TraceContext
 from core.types import RetrievalResult
 
 
@@ -38,7 +40,7 @@ class HybridSearch:
         query: str,
         top_k: int = 10,
         filters: dict[str, Any] | None = None,
-        trace: Any = None,
+        trace: TraceContext | None = None,
         on_stage: Callable[[str, list[RetrievalResult]], None] | None = None,
     ) -> list[RetrievalResult]:
         """执行一次完整混合检索，并返回经过兜底过滤的 Top-K 结果。
@@ -53,11 +55,24 @@ class HybridSearch:
         if filters is not None and not isinstance(filters, dict):
             raise TypeError("filters 必须是字典或 None")
 
+        started = perf_counter()
         processed = self.query_processor.process(query, filters=filters, trace=trace)
+        _record_trace(
+            trace,
+            "query_processing",
+            started,
+            method=getattr(processed, "method", "rule"),
+            provider="local",
+            details={
+                "keyword_count": len(processed.keywords),
+                "sparse_term_count": len(processed.sparse_terms),
+                "filter_keys": sorted(processed.filters),
+            },
+        )
         dense_top_k, sparse_top_k = self._candidate_limits(top_k)
         pre_filters = self._hard_filters(processed.filters)
 
-        dense_results, sparse_results = self._retrieve_in_parallel(
+        dense_results, sparse_results, retrieval_info = self._retrieve_in_parallel(
             dense_query=processed.dense_query,
             sparse_terms=processed.sparse_terms,
             dense_top_k=dense_top_k,
@@ -65,13 +80,47 @@ class HybridSearch:
             pre_filters=pre_filters,
             trace=trace,
         )
+        _record_retrieval_trace(
+            trace, "dense_retrieval", "dense", self.dense_retriever,
+            dense_results, dense_top_k, retrieval_info["dense"],
+        )
+        _record_retrieval_trace(
+            trace, "sparse_retrieval", "bm25", self.sparse_retriever,
+            sparse_results, sparse_top_k, retrieval_info["sparse"],
+        )
         self._notify_stage(on_stage, "dense", dense_results)
         self._notify_stage(on_stage, "sparse", sparse_results)
         if not dense_results and not sparse_results:
+            _record_elapsed_trace(
+                trace,
+                "fusion",
+                0.0,
+                method="rrf",
+                provider=getattr(self.fusion, "name", type(self.fusion).__name__),
+                details={
+                    "dense_result_count": 0,
+                    "sparse_result_count": 0,
+                    "result_count": 0,
+                    "skipped": True,
+                },
+            )
             return []
 
+        started = perf_counter()
         fused = self.fusion.fuse(
             dense_results, sparse_results, top_k=None, trace=trace
+        )
+        _record_trace(
+            trace,
+            "fusion",
+            started,
+            method="rrf",
+            provider=getattr(self.fusion, "name", type(self.fusion).__name__),
+            details={
+                "dense_result_count": len(dense_results),
+                "sparse_result_count": len(sparse_results),
+                "result_count": len(fused),
+            },
         )
         self._notify_stage(on_stage, "fusion", fused)
         filtered = self._apply_metadata_filters(fused, processed.filters)
@@ -115,8 +164,12 @@ class HybridSearch:
         dense_top_k: int,
         sparse_top_k: int,
         pre_filters: dict[str, Any] | None,
-        trace: Any,
-    ) -> tuple[list[RetrievalResult], list[RetrievalResult]]:
+        trace: TraceContext | None,
+    ) -> tuple[
+        list[RetrievalResult],
+        list[RetrievalResult],
+        dict[str, dict[str, Any]],
+    ]:
         """并行执行可用的召回路径，并将单路异常降级为空结果。"""
         tasks = {}
         if dense_query:
@@ -128,17 +181,37 @@ class HybridSearch:
                 sparse_terms, top_k=sparse_top_k, trace=trace
             )
         if not tasks:
-            return [], []
+            return [], [], {
+                "dense": {"elapsed_ms": 0.0, "skipped": True},
+                "sparse": {"elapsed_ms": 0.0, "skipped": True},
+            }
 
         results: dict[str, list[RetrievalResult]] = {"dense": [], "sparse": []}
+        info: dict[str, dict[str, Any]] = {
+            "dense": {"elapsed_ms": 0.0, "skipped": "dense" not in tasks},
+            "sparse": {"elapsed_ms": 0.0, "skipped": "sparse" not in tasks},
+        }
+
+        def timed(task: Callable[[], list[RetrievalResult]]) -> tuple[
+            list[RetrievalResult], float, str | None
+        ]:
+            started = perf_counter()
+            try:
+                return task(), (perf_counter() - started) * 1000, None
+            except Exception as exc:  # 单路失败不阻断另一条召回路径
+                return [], (perf_counter() - started) * 1000, str(exc)
+
         with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
-            futures = {name: executor.submit(task) for name, task in tasks.items()}
+            futures = {name: executor.submit(timed, task) for name, task in tasks.items()}
             for name, future in futures.items():
                 try:
-                    results[name] = future.result()
+                    results[name], info[name]["elapsed_ms"], error = future.result()
+                    if error:
+                        info[name]["error"] = error
                 except Exception:  # 单路失败不阻断另一条召回路径
                     results[name] = []
-        return results["dense"], results["sparse"]
+                    info[name]["error"] = "retrieval task failed unexpectedly"
+        return results["dense"], results["sparse"], info
 
     @staticmethod
     def _apply_metadata_filters(
@@ -177,3 +250,73 @@ class HybridSearch:
             set(actual) if isinstance(actual, (list, tuple, set)) else {actual}
         )
         return bool(actual_values & expected_values)
+
+
+def _record_retrieval_trace(
+    trace: TraceContext | None,
+    stage_name: str,
+    method: str,
+    retriever: Any,
+    results: list[RetrievalResult],
+    top_k: int,
+    info: dict[str, Any],
+) -> None:
+    """把并行检索线程测得的耗时写回主 trace。"""
+    details = {
+        "result_count": len(results),
+        "top_k": top_k,
+        "skipped": bool(info.get("skipped", False)),
+    }
+    if info.get("error"):
+        details["error"] = info["error"]
+    _record_elapsed_trace(
+        trace,
+        stage_name,
+        float(info["elapsed_ms"]),
+        method=method,
+        provider=getattr(retriever, "name", type(retriever).__name__),
+        details=details,
+    )
+
+
+def _record_trace(
+    trace: TraceContext | None,
+    stage_name: str,
+    started: float,
+    *,
+    method: str,
+    provider: str,
+    details: dict[str, Any],
+) -> None:
+    _record_elapsed_trace(
+        trace,
+        stage_name,
+        (perf_counter() - started) * 1000,
+        method=method,
+        provider=provider,
+        details=details,
+    )
+
+
+def _record_elapsed_trace(
+    trace: TraceContext | None,
+    stage_name: str,
+    elapsed_ms: float,
+    *,
+    method: str,
+    provider: str,
+    details: dict[str, Any],
+) -> None:
+    """追踪记录不可反过来影响检索主流程。"""
+    if trace is None or not callable(getattr(trace, "record_stage", None)):
+        return
+    try:
+        trace.record_stage(
+            stage_name,
+            elapsed_ms,
+            method=method,
+            provider=provider,
+            details=details,
+        )
+    except Exception:
+        pass

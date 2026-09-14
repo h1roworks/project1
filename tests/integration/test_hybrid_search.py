@@ -7,7 +7,10 @@ import pytest
 
 from core.query_engine.fusion import Fusion
 from core.query_engine.hybrid_search import HybridSearch
+from core.query_engine.reranker import Reranker
+from core.trace import TraceContext
 from core.types import ProcessedQuery, RetrievalResult
+from libs.reranker.base_reranker import RerankCandidate
 
 
 def result(chunk_id: str, **metadata) -> RetrievalResult:
@@ -273,3 +276,36 @@ def test_stage_callback_receives_dense_sparse_and_fusion_results() -> None:
     assert [item.chunk_id for item in stages["dense"]] == ["dense"]
     assert [item.chunk_id for item in stages["sparse"]] == ["sparse"]
     assert [item.chunk_id for item in stages["fusion"]] == ["dense", "sparse"]
+
+
+def test_query_trace_records_every_search_and_rerank_stage() -> None:
+    """F3: 一次完整查询能留下 Dashboard 所需的五段追踪数据。"""
+    class FakeBackend:
+        backend = "fake"
+
+        def rerank(self, _query, candidates, trace=None):
+            return list(reversed(candidates))
+
+    processed = ProcessedQuery(
+        original_query="RAG", dense_query="RAG", sparse_terms={"rag": 1.0}
+    )
+    search, *_ = make_search(
+        processed,
+        dense=RecordingRetriever([result("dense")]),
+        sparse=RecordingRetriever([result("sparse")]),
+    )
+    trace = TraceContext("query")
+
+    candidates = search.search("RAG", trace=trace)
+    reranked = Reranker(
+        SimpleNamespace(rerank=SimpleNamespace(top_m=10, timeout_seconds=0)),
+        reranker=FakeBackend(),
+    ).rerank("RAG", candidates, trace=trace)
+
+    assert [stage["name"] for stage in trace.stages] == [
+        "query_processing", "dense_retrieval", "sparse_retrieval", "fusion", "rerank",
+    ]
+    assert all(stage["elapsed_ms"] >= 0 for stage in trace.stages)
+    assert all(stage["method"] for stage in trace.stages)
+    assert trace.to_dict()["trace_type"] == "query"
+    assert [item.chunk_id for item in reranked] == ["sparse", "dense"]

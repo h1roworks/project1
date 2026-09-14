@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from time import perf_counter
 from typing import Any
 
+from core.trace import TraceContext
 from core.types import RetrievalResult
 from libs.reranker.base_reranker import BaseReranker, RerankCandidate
 from libs.reranker.reranker_factory import RerankerFactory
@@ -27,7 +29,7 @@ class Reranker:
         self,
         query: str,
         candidates: list[RetrievalResult],
-        trace: Any = None,
+        trace: TraceContext | None = None,
     ) -> list[RetrievalResult]:
         """精排融合候选；后端异常或超时时安全返回原融合排序。
 
@@ -38,16 +40,32 @@ class Reranker:
             raise ValueError("query 必须是非空字符串")
         if not isinstance(candidates, list):
             raise TypeError("candidates 必须是列表")
+        started = perf_counter()
+        backend_name = getattr(self.backend, "backend", "unknown")
         if not candidates:
+            _record_rerank_trace(trace, started, backend_name, 0, 0, skipped=True)
             return []
 
         pool, tail = self._split_top_m(candidates)
-        backend_name = getattr(self.backend, "backend", "unknown")
         try:
             reranked = self._run_with_timeout(query, pool, trace)
-            return self._merge_reranked(reranked, pool, tail, backend_name)
+            results = self._merge_reranked(reranked, pool, tail, backend_name)
+            _record_rerank_trace(
+                trace, started, backend_name, len(candidates), len(results), fallback=False
+            )
+            return results
         except Exception as exc:  # 任何后端/超时问题均保留 D5 的融合排序
-            return self._fallback(candidates, backend_name, exc)
+            results = self._fallback(candidates, backend_name, exc)
+            _record_rerank_trace(
+                trace,
+                started,
+                backend_name,
+                len(candidates),
+                len(results),
+                fallback=True,
+                error=str(exc),
+            )
+            return results
 
     def _split_top_m(
         self,
@@ -62,7 +80,7 @@ class Reranker:
         self,
         query: str,
         candidates: list[RetrievalResult],
-        trace: Any,
+        trace: TraceContext | None,
     ) -> list[RerankCandidate]:
         rerank_candidates = [
             RerankCandidate(
@@ -157,3 +175,37 @@ class Reranker:
             )
             for item in candidates
         ]
+
+
+def _record_rerank_trace(
+    trace: TraceContext | None,
+    started: float,
+    backend_name: str,
+    candidate_count: int,
+    result_count: int,
+    *,
+    fallback: bool = False,
+    skipped: bool = False,
+    error: str | None = None,
+) -> None:
+    """记录 rerank 的结果；观察失败不应改变原有回退语义。"""
+    if trace is None or not callable(getattr(trace, "record_stage", None)):
+        return
+    details: dict[str, Any] = {
+        "candidate_count": candidate_count,
+        "result_count": result_count,
+        "fallback": fallback,
+        "skipped": skipped,
+    }
+    if error:
+        details["error"] = error
+    try:
+        trace.record_stage(
+            "rerank",
+            (perf_counter() - started) * 1000,
+            method="rerank",
+            provider=backend_name,
+            details=details,
+        )
+    except Exception:
+        pass

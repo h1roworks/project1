@@ -158,7 +158,7 @@ def test_server_returns_base64_image_content_for_retrieved_image(tmp_path) -> No
     storage.save_image("architecture", image_bytes, collection="course")
 
     class FakeHybridSearch:
-        def search(self, _query, top_k, filters=None):
+        def search(self, _query, top_k, filters=None, trace=None):
             assert top_k == 1
             assert filters is None
             return [
@@ -174,7 +174,7 @@ def test_server_returns_base64_image_content_for_retrieved_image(tmp_path) -> No
             ]
 
     class FakeReranker:
-        def rerank(self, _query, candidates):
+        def rerank(self, _query, candidates, trace=None):
             return candidates
 
     query_tool = QueryKnowledgeHubTool(
@@ -182,6 +182,7 @@ def test_server_returns_base64_image_content_for_retrieved_image(tmp_path) -> No
         reranker=FakeReranker(),
         default_top_k=1,
         multimodal_assembler=MultimodalAssembler(image_storage=storage),
+        trace_writer=lambda _trace: None,
     )
 
     async def call_query_tool() -> None:

@@ -110,6 +110,8 @@ class TransformSettings:
 @dataclass
 class EvaluationSettings:
     provider: str = "composite"
+    # 当 provider=composite 时声明要组合的评估器；空值回退到 custom。
+    backends: list[str] = field(default_factory=list)
     metrics: list[str] = field(default_factory=list)
     golden_test_set_path: str = ""
 

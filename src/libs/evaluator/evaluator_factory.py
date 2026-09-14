@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 _BUILTIN_PROVIDERS: dict[str, str] = {
     "custom": "libs.evaluator.custom_evaluator",
     "ragas": "observability.evaluation.ragas_evaluator",
+    "composite": "observability.evaluation.composite_evaluator",
 }
 
 
@@ -47,4 +48,14 @@ class EvaluatorFactory:
             raise ValueError(
                 f"未知的 Evaluator provider: '{provider}'。可选: {sorted(cls._registry)}"
             )
+        if provider == "composite":
+            backend_names = list(getattr(settings, "backends", []) or ["custom"])
+            if "composite" in backend_names:
+                raise ValueError("CompositeEvaluator 不支持嵌套 composite backend")
+
+            class _ProviderSettings:
+                def __init__(self, name: str) -> None:
+                    self.provider = name
+
+            return impl([cls.create(_ProviderSettings(name)) for name in backend_names])
         return impl()

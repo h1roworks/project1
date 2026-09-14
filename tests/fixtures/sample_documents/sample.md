@@ -8,6 +8,6 @@
 
 ## 关键信息
 
-- 项目名称：Smart Knowledge Hub
+- 项目名称：Knowledge Hub v1
 - 架构：模块化 RAG + MCP Server
 - 检索策略：Hybrid Search（BM25 + Dense Embedding + RRF Fusion）

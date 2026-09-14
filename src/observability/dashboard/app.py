@@ -23,7 +23,7 @@ from observability.dashboard.pages import (
 
 def main() -> None:
     """Configure the app, register all six routes, and run the selected page."""
-    st.set_page_config(page_title="Smart Knowledge Hub", page_icon="📚", layout="wide")
+    st.set_page_config(page_title="Knowledge Hub v1", page_icon="📚", layout="wide")
 
     navigation = st.navigation(
         {

@@ -29,6 +29,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="运行知识库 Golden Test Set 评估")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="settings.yaml 路径")
     parser.add_argument("--test-set", default=str(DEFAULT_TEST_SET), help="Golden test set JSON 路径")
+    parser.add_argument(
+        "--collection",
+        default=None,
+        help="要评估的 BM25 collection（默认使用 settings.vector_store.collection）",
+    )
     return parser
 
 
@@ -36,7 +41,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         settings = load_settings(args.config)
-        hybrid_search, _ = build_query_engine(settings)
+        hybrid_search, _ = build_query_engine(settings, args.collection)
         evaluator = EvaluatorFactory.create(settings.evaluation)
         report = EvalRunner(settings, hybrid_search, evaluator).run(args.test_set)
     except Exception as exc:  # noqa: BLE001 - CLI converts setup errors to readable output

@@ -1,4 +1,14 @@
-# Modular RAG MCP Server
+# Knowledge Hub v1
+
+> A modular, observable RAG system with MCP tools and a Streamlit dashboard for document ingestion, hybrid retrieval, reranking, evaluation, and trace inspection.
+
+> **Release:** v1.0.0 · **Python:** 3.10+ · **Dashboard:** Streamlit · **Protocol:** MCP
+
+## Project snapshot
+
+Knowledge Hub v1 is a portfolio-ready knowledge-base project. Its modular architecture lets you change LLM, embedding, vector-store, splitter, and reranker providers through configuration. The repository includes unit, integration, and end-to-end tests, plus a local dashboard for inspecting ingestion, retrieval, and evaluation traces.
+
+For a safe public upload, read [the GitHub upload guide](docs/GITHUB_UPLOAD.md). Never commit API keys, local databases, or trace logs.
 
 > 一个可插拔、可观测的模块化 RAG（检索增强生成）服务框架，通过 MCP（Model Context Protocol）协议对外暴露工具接口，支持 Copilot / Claude 等 AI 助手直接调用。同时也是一份专为**大模型相关岗位学习与面试求职**设计的实战项目与配套教学资源。
 

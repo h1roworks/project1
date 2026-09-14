@@ -1,4 +1,4 @@
-"""Smart Knowledge Hub - entry point."""
+"""Knowledge Hub v1 entry point."""
 
 from pathlib import Path
 
@@ -13,13 +13,13 @@ CONFIG_PATH = Path(__file__).parent / "config" / "settings.yaml"
 def main() -> None:
     settings: Settings = load_settings(CONFIG_PATH)
     logger.info(
-        "Smart Knowledge Hub starting | llm=%s/%s | embedding=%s/%s",
+        "Knowledge Hub v1 starting | llm=%s/%s | embedding=%s/%s",
         settings.llm.provider,
         settings.llm.model,
         settings.embedding.provider,
         settings.embedding.model,
     )
-    print("Smart Knowledge Hub started.")
+    print("Knowledge Hub v1 started.")
 
 
 if __name__ == "__main__":

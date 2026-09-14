@@ -46,7 +46,7 @@ class ProtocolHandler:
     def __init__(
         self,
         *,
-        server_name: str = "smart-knowledge-hub",
+        server_name: str = "knowledge-hub-v1",
         server_version: str = "0.1.0",
     ) -> None:
         self.server_name = server_name

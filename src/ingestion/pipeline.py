@@ -43,6 +43,7 @@ from ingestion.transform.metadata_enricher import MetadataEnricher
 from libs.embedding.base_embedding import BaseEmbedding
 from libs.embedding.embedding_factory import EmbeddingFactory
 from libs.loader.base_loader import BaseLoader
+from libs.loader.markdown_loader import MarkdownLoader
 from libs.loader.file_integrity import FileIntegrityChecker, SQLiteIntegrityChecker
 from libs.loader.pdf_loader import PDFLoader
 from libs.vector_store.base_vector_store import BaseVectorStore
@@ -126,7 +127,7 @@ class IngestionPipeline:
             settings: 完整 Settings；提供时用于经工厂装配 embedding/vector_store，
                 并读取 splitter/transform 子段配置。
             loaders: 文档 Loader 列表（按 ``can_handle`` 匹配文件类型）。
-                缺省 ``[PDFLoader()]``。
+                缺省 ``[PDFLoader(), MarkdownLoader()]``。
             embedding: BaseEmbedding 实现；缺省经 EmbeddingFactory 从 settings 创建。
             vector_store: BaseVectorStore 实现；缺省经 VectorStoreFactory 从 settings 创建。
             bm25_indexer: BM25Indexer 实例；注入后跨 collection 复用（测试用），
@@ -138,7 +139,7 @@ class IngestionPipeline:
             bm25_dir: 未注入 bm25_indexer 时的 BM25 索引落盘目录。
         """
         self._settings = settings
-        self._loaders = loaders or [PDFLoader()]
+        self._loaders = loaders or [PDFLoader(), MarkdownLoader()]
         self._integrity = integrity or SQLiteIntegrityChecker()
         self._image_storage = image_storage or ImageStorage()
         self._default_collection = (

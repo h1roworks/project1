@@ -54,7 +54,7 @@ def test_server_initializes_and_keeps_stdout_protocol_only() -> None:
         response_line = process.stdout.readline()
         response = json.loads(response_line)
         assert response["id"] == 1
-        assert response["result"]["serverInfo"]["name"] == "smart-knowledge-hub"
+        assert response["result"]["serverInfo"]["name"] == "knowledge-hub-v1"
         assert "capabilities" in response["result"]
 
         process.stdin.write(

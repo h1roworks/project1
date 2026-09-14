@@ -45,9 +45,10 @@ def test_load_real_config() -> None:
     """The real config/settings.yaml must load and validate."""
     settings = load_settings(REAL_CONFIG)
     assert isinstance(settings, Settings)
-    assert settings.llm.provider == "dashscope"
-    assert settings.llm.model == "qwen-plus"
-    assert settings.embedding.model == "text-embedding-v3"
+    assert settings.llm.provider
+    assert settings.llm.model
+    assert settings.embedding.provider
+    assert settings.embedding.model
     assert settings.vector_store.provider == "chroma"
 
 

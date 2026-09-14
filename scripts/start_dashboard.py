@@ -32,7 +32,7 @@ LOG_FILE = LOG_DIR / "dashboard.log"
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="启动 Smart Knowledge Hub Dashboard")
+    parser = argparse.ArgumentParser(description="启动 Knowledge Hub v1 Dashboard")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="settings.yaml 路径")
     parser.add_argument("--host", default=None, help="覆盖 Dashboard host")
     parser.add_argument("--port", type=int, default=None, help="覆盖 Dashboard port")

@@ -13,12 +13,12 @@ llm:
 
 # ============ Embedding 配置 ============
 embedding:
-  provider: "dashscope"            # dashscope | openai | azure | ollama
-  model: "text-embedding-v3"
-  api_key: "${DASHSCOPE_API_KEY}"
-  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
-  dimensions: 1024
-  batch_size: 32
+  provider: "ollama"               # dashscope | openai | azure | ollama
+  model: "nomic-embed-text"
+  api_key: ""                       # Ollama 本地服务不需要 API Key
+  base_url: "http://127.0.0.1:11434"  # 用回环 IP 避开 Python SDK 的 localhost 代理问题
+  dimensions: 768
+  batch_size: 4                   # 本地 Ollama 批量嵌入以小批次优先保证稳定性
   max_input_chars: 0               # 单条输入超长截断上限（字符），0 = 不截断
   # 使用 Azure OpenAI（provider=azure）时的专用配置：
   # azure_endpoint: "https://xxx.openai.azure.com/"
@@ -41,7 +41,7 @@ vision_llm:
 # ============ 向量存储配置 ============
 vector_store:
   provider: "chroma"               # chroma | qdrant
-  collection: "knowledge_hub"
+  collection: "knowledge_hub_ollama"
   persist_dir: "data/db/chroma"
 
 # ============ 检索配置 ============

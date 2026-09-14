@@ -45,7 +45,7 @@ def test_initialize_returns_identity_and_tools_capability(handler: ProtocolHandl
         "result": {
             "protocolVersion": "2025-06-18",
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "smart-knowledge-hub", "version": "test-version"},
+            "serverInfo": {"name": "knowledge-hub-v1", "version": "test-version"},
         },
     }
 

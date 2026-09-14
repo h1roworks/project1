@@ -29,7 +29,7 @@ from mcp_server.tools.get_document_summary import (
 )
 from observability.logger import get_logger
 
-SERVER_NAME = "smart-knowledge-hub"
+SERVER_NAME = "knowledge-hub-v1"
 SERVER_VERSION = "0.1.0"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -49,8 +49,8 @@ def create_server(
     server = Server(
         SERVER_NAME,
         version=SERVER_VERSION,
-        title="Smart Knowledge Hub",
-        description="MCP interface for the Smart Knowledge Hub.",
+        title="Knowledge Hub v1",
+        description="MCP interface for Knowledge Hub v1.",
     )
     tool = query_tool or QueryKnowledgeHubTool.from_config(
         PROJECT_ROOT / "config" / "settings.yaml"

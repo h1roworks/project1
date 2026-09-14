@@ -11,10 +11,10 @@ from libs.evaluator.custom_evaluator import CustomEvaluator
 if TYPE_CHECKING:
     from core.settings import EvaluationSettings
 
-# 内置 provider → 实现模块路径。ragas 依赖较重，仅在使用时才导入（阶段 H 落地）。
+# 内置 provider → 实现模块路径。ragas 依赖较重，仅在使用时才导入。
 _BUILTIN_PROVIDERS: dict[str, str] = {
     "custom": "libs.evaluator.custom_evaluator",
-    "ragas": "libs.evaluator.ragas_evaluator",
+    "ragas": "observability.evaluation.ragas_evaluator",
 }
 
 
